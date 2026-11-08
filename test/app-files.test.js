@@ -9,7 +9,7 @@ test("the offline copy lists every app file, and only real ones", () => {
   const sw = read("sw.js");
   const listed = [...sw.matchAll(/^\s+"([^"]+)",$/gm)].map((m) => m[1]);
   for (const f of listed) if (f !== "./") assert.ok(existsSync(new URL(f, root)), `${f} exists`);
-  const js = ["src", "src/core", "src/ui"].flatMap((d) => readdirSync(new URL(d, root)).filter((f) => f.endsWith(".js")).map((f) => `${d}/${f}`));
+  const js = ["src", "src/core", "src/ui", "src/lang"].flatMap((d) => readdirSync(new URL(d, root)).filter((f) => f.endsWith(".js")).map((f) => `${d}/${f}`));
   for (const f of js) assert.ok(listed.includes(f), `${f} is cached for offline use`);
   assert.ok(listed.includes("vendor/pako.esm.mjs"));
 });

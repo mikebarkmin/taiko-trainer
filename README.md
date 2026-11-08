@@ -12,20 +12,26 @@ words taiko players use to learn rhythms: *Don, Doko, Ka, Su…*
 - **Share** anything with a link, or move it with a file.
 - **Look up** all 21 drum words: hand, position, size, length and how to say them.
 
+In **English or German** (Deutsch): it follows the browser's language, and the
+EN / DE switch in the top bar changes it.
+
 It runs entirely in the browser: no server, no accounts, nothing uploaded.
 It works on phones and tablets, and can be added to the home screen to open
 without internet.
 
 ## Put it online
 
-The app is a folder of static files, so any static web host works. With
-GitHub Pages: in the repository go to **Settings → Pages**, choose **Deploy
-from a branch**, pick `main` and `/ (root)`, and save. The app will be at
-`https://<user>.github.io/taiko-trainer/`.
+The app is a folder of static files, so any static web host works. This
+repository has a GitHub Pages workflow (`.github/workflows/pages.yml`): it runs
+the tests and publishes on every push to `main`. To enable it, go to
+**Settings → Pages** and choose **GitHub Actions** as the source. The app will
+be at `https://<user>.github.io/taiko-trainer/`.
 
-To try it on your own computer, serve the folder with any static file server,
-for example `python3 -m http.server` in this folder, then open
-<http://localhost:8000>. Opening `index.html` straight from disk does not work,
+To work on it, run `npm run dev` and open <http://localhost:8000>. Open pages
+update as you save: style changes apply in place, other changes reload the
+page. `PORT=3000` picks another port, and `HOST=0.0.0.0` makes it reachable
+from a phone on the same network. Any other static file server works too, for
+example `python3 -m http.server`, just without the live reload. Opening `index.html` straight from disk does not work,
 because browsers block JavaScript modules on `file://`.
 
 ### On a phone or tablet
@@ -58,6 +64,9 @@ internet, except for YouTube videos.
 | Guide drum sound | Plays the rhythm. Turn it off once the rhythm is learned and drum along with only the click |
 | Metronome click | A click on every beat, louder on beat 1 |
 | Say the shouts | Speaks shouts like *Sore!* with the device’s voice |
+
+Everywhere in the app, **red is the right hand and blue is the left hand**;
+round marks are hits on the skin, square ones on the rim.
 
 Tap the drum, or press **D F J K** on a keyboard, to try single hits:
 D = left rim (Ra), F = left middle (Kon), J = right middle (Don), K = right rim (Ka).
@@ -223,3 +232,20 @@ checks it) and bump its `CACHE` name.
 ## License
 
 MIT. pako is © Vitaly Puzrin and Andrei Tuputcyn (MIT and Zlib).
+
+## Translations
+
+All text lives in `src/lang/`: `en.js` is the source, `de.js` the German
+version with the same keys (plus `CONTENT`: the drum words and built-in
+patterns). `npm test` checks that both files have the same keys and
+placeholders. To add a language, copy `de.js`, translate it, and register it
+in `src/i18n.js` and `sw.js`.
+
+## Voice
+
+The drum words and shouts are spoken with the device's own speech voice
+(Japanese if one is installed). Recorded clips can replace it: put
+`sounds/voice/<word id>.mp3` files (ids as in `src/core/words.js`, such as
+`don` or `sore`) and a `sounds/voice/index.json` listing them,
+`{ "clips": { "don": {}, "sore": {} } }`. Recorded shouts are played exactly
+on the beat; words without a clip keep using the device voice.

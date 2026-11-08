@@ -1,7 +1,7 @@
 import { WORDS } from "./core/words.js";
 import { makeLibrary, importData } from "./core/library.js";
 import { decodeShare } from "./core/share.js";
-import { Synth, speak } from "./audio.js";
+import { Synth } from "./audio.js";
 import { Player } from "./player.js";
 import { loadCustom, saveCustom, loadSettings, saveSettings } from "./store.js";
 import { mountPlay } from "./ui/play.js";
@@ -9,6 +9,23 @@ import { mountLibrary, summary } from "./ui/library.js";
 import { mountWords } from "./ui/words.js";
 import { mountLessonEditor } from "./ui/lesson-editor.js";
 import { $, $$ } from "./ui/render.js";
+import { t, quote, lang, setLang, translatePage } from "./i18n.js";
+
+// ---------- language ----------
+// The page text is filled in before the screens are built. Switching
+// language reloads the page, so every screen is rebuilt in the new one.
+document.documentElement.lang = lang;
+document.querySelector('meta[name="description"]')?.setAttribute("content", t("meta.description"));
+translatePage();
+for (const b of $$("#langSwitch [data-lang]")) {
+  b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+  b.addEventListener("click", () => {
+    if (b.dataset.lang === lang) return;
+    setLang(b.dataset.lang, { save: true });
+    views.lesson?.flush();
+    location.reload();
+  });
+}
 
 const synth = new Synth();
 const player = new Player(synth);
@@ -60,7 +77,7 @@ const app = {
     drum?.setWord(w.kana);
     if (w.group === "shout") {
       drum?.shout(id);
-      speak(id);
+      synth.say(id);
       return;
     }
     const spb = 60 / Math.max(60, Math.min(140, settings.bpm));
@@ -75,7 +92,7 @@ const app = {
 
 // ---------- screens ----------
 const VIEWS = ["play", "library", "words", "lesson"];
-const TITLES = { play: "Play", library: "Patterns & songs", words: "Words", lesson: "Strike editor" };
+const TITLES = { play: "title.play", library: "title.library", words: "title.words", lesson: "title.lesson" };
 
 function show() {
   const [name, param = ""] = location.hash.replace(/^#/, "").split("=");
@@ -89,7 +106,7 @@ function show() {
     if (a.dataset.tab === tab) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
-  document.title = `${TITLES[active]} · Taiko Trainer`;
+  document.title = `${t(TITLES[active])} · Taiko Trainer`;
   if (active === "play") views.play.setVisible(true);
   if (active === "lesson") views.lesson.open(param);
 }
@@ -107,26 +124,26 @@ function readShareLink() {
     data = decodeShare(m[1]);
     importData({ patterns: [], songs: [], lessons: [] }, data); // validate only
   } catch {
-    textEl.textContent = "This share link is damaged or cut off, so nothing was added. Ask for the link again, or for a file.";
+    textEl.textContent = t("banner.damaged");
     addBtn.hidden = true;
     banner.hidden = false;
     return true;
   }
-  const name = (item, fallback) => `“${String(item?.name || fallback).slice(0, 80)}”`;
+  const name = (item, fallback) => quote(String(item?.name || t(fallback)).slice(0, 80));
   const lesson = data.lessons?.[0];
   const song = data.songs?.[0];
   textEl.textContent = lesson
-    ? `Someone shared the video lesson ${name(lesson, "Untitled")} with you.`
+    ? t("banner.lesson", { name: name(lesson, "data.untitled") })
     : song
-      ? `Someone shared the song ${name(song, "Untitled song")} with you.`
-      : `Someone shared the pattern ${name(data.patterns?.[0], "Untitled pattern")} with you.`;
+      ? t("banner.song", { name: name(song, "data.untitledSong") })
+      : t("banner.pattern", { name: name(data.patterns?.[0], "data.untitledPattern") });
   addBtn.hidden = false;
   banner.hidden = false;
   addBtn.onclick = () => {
     const { custom: next, added } = importData(custom, data);
     const ok = app.setCustom(next);
-    let message = `${summary(added)}${ok ? " You’ll find it below." : " This browser would not save it, though."}`;
-    if (added.lessons.some((l) => l.video?.type === "file")) message += " Open the lesson and attach its video file to play along.";
+    let message = summary(added) + t(ok ? "banner.found" : "banner.notSaved");
+    if (added.lessons.some((l) => l.video?.type === "file")) message += t("banner.attach");
     textEl.textContent = message;
     addBtn.hidden = true;
   };

@@ -1,10 +1,36 @@
-// Drum sounds made with the Web Audio API (no sound files needed).
+// Drum sounds made with the Web Audio API (no sound files needed), and the
+// spoken words: recorded clips from sounds/voice/ when there are any,
+// otherwise the device's own speech voice.
 
 import { WORDS } from "./core/words.js";
+
+const VOICE_DIR = "sounds/voice/";
+const VOICE_GAIN = 0.9;
+
+/** Ids of the recorded word clips, from sounds/voice/index.json (empty if none). */
+export const voiceClips = typeof document === "undefined"
+  ? Promise.resolve(new Set())
+  : fetch(`${VOICE_DIR}index.json`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => new Set(Object.keys(j?.clips || {}).filter((id) => WORDS[id])))
+    .catch(() => new Set());
+let clipIds = new Set();
+voiceClips.then((ids) => { clipIds = ids; });
+
+/** Where the sound starts: generated speech often begins with a little silence. */
+function soundStart(buf) {
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) if (Math.abs(d[i]) > 0.02) return Math.max(0, i / buf.sampleRate - 0.005);
+  return 0;
+}
 
 const VOL = { big: 1, medium: 0.62, small: 0.26 };
 
 export class Synth {
+  #loading = new Map(); // word id → Promise of a decoded clip (or null)
+  #clips = new Map(); // word id → { buf, start }, ready to play
+  #saying = null; // the clip say() is playing, so the next one cuts it off
+
   constructor() {
     this.ctx = null;
     this.master = null;
@@ -30,12 +56,60 @@ export class Synth {
         const d = noise.getChannelData(0);
         for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
         Object.assign(this, { ctx, master, noise });
+        voiceClips.then((ids) => ids.forEach((id) => this.#load(id)));
       }
       if (this.ctx.state === "suspended") this.ctx.resume();
       return this.ctx;
     } catch {
       return null;
     }
+  }
+
+  #load(id) {
+    if (!this.ctx || !clipIds.has(id)) return Promise.resolve(null);
+    if (!this.#loading.has(id)) {
+      this.#loading.set(id, fetch(`${VOICE_DIR}${id}.mp3`)
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+        .then((bytes) => this.ctx.decodeAudioData(bytes))
+        .then((buf) => {
+          const clip = { buf, start: soundStart(buf) };
+          this.#clips.set(id, clip);
+          return clip;
+        })
+        .catch(() => null));
+    }
+    return this.#loading.get(id);
+  }
+
+  #play(clip, at, out) {
+    const src = this.ctx.createBufferSource();
+    src.buffer = clip.buf;
+    const g = this.ctx.createGain();
+    g.gain.value = VOICE_GAIN;
+    src.connect(g);
+    g.connect(out || this.master);
+    src.start(Math.max(at, this.ctx.currentTime), clip.start);
+    return src;
+  }
+
+  /**
+   * Play the recorded clip of word `id` at `at` on the audio clock.
+   * Returns false when there is no clip ready (then use speak()).
+   */
+  voice(id, at, out) {
+    const clip = this.ctx && this.#clips.get(id);
+    if (!clip) { this.#load(id); return false; }
+    this.#play(clip, at, out);
+    return true;
+  }
+
+  /** Say a word right now: the recorded clip if there is one, else the device voice. */
+  async say(id) {
+    this.ensure();
+    const clip = clipIds.has(id) ? await this.#load(id) : null;
+    if (!clip) { speak(id); return; }
+    try { this.#saying?.stop(); } catch { /* already ended */ }
+    this.#saying = this.#play(clip, this.ctx.currentTime, null);
   }
 
   /** Seconds on the audio clock (or the page clock without audio). */
@@ -126,17 +200,72 @@ export class Synth {
 
 export const canSpeak = typeof globalThis.speechSynthesis !== "undefined";
 
-/** Say a word out loud with the device's voice (Japanese if installed). */
+// How each shout is written for the speech engine: hiragana with a small っ
+// at the end, which good Japanese voices say as a short, clipped call.
+const SPOKEN = { sore: "それっ", yoisho: "よいしょっ", ha: "はっ", yo: "よっ", ho: "ほっ", iya: "いやーっ" };
+
+// Ranks Japanese voices: natural-sounding ones first, robotic ones last.
+function score(v) {
+  const name = v.name || "";
+  let s = 0;
+  if (/natural|neural|premium|enhanced|siri/i.test(name)) s += 4;
+  if (/kyoko|o-ren|otoya|hattori|nanami|keita|aoi|daichi|mayu|naoki|shiori|haruka|ayumi|ichiro|sayaka|google/i.test(name)) s += 2;
+  if (v.localService) s += 1; // starts speaking sooner, so shouts land on time
+  if (/espeak|festival|mbrola/i.test(name)) s -= 5;
+  return s;
+}
+
+let voices = [];
+let voice = null;
+const listeners = new Set();
+
+function loadVoices() {
+  try {
+    voices = speechSynthesis.getVoices() || [];
+    voice = voices.filter((v) => /^ja([-_]|$)/i.test(v.lang)).sort((a, b) => score(b) - score(a))[0] || null;
+  } catch {
+    voices = [];
+    voice = null;
+  }
+  for (const fn of listeners) fn();
+}
+
+// Browsers list their voices a moment after the page loads.
+if (canSpeak) {
+  loadVoices();
+  speechSynthesis.addEventListener?.("voiceschanged", loadVoices);
+}
+
+/**
+ * What the device can say: "japanese" (a Japanese voice is installed),
+ * "other" (voices, but no Japanese one), or "unknown" (no list yet).
+ * `onChange` is called again when the browser's list arrives or changes.
+ */
+export function voiceStatus(onChange) {
+  if (onChange) listeners.add(onChange);
+  if (!canSpeak) return "none";
+  if (voice) return "japanese";
+  return voices.length ? "other" : "unknown";
+}
+
+/** Say a word out loud: with the best Japanese voice on the device, if any. */
 export function speak(id) {
   try {
     if (!canSpeak) return;
     const w = WORDS[id];
-    const voices = speechSynthesis.getVoices() || [];
-    const ja = voices.find((v) => /^ja/i.test(v.lang));
-    const u = new SpeechSynthesisUtterance(ja ? w.kana : w.ro.replace(/!/g, ""));
-    if (ja) { u.voice = ja; u.lang = ja.lang; }
-    u.rate = 1.15;
-    u.pitch = 1.1;
+    if (!voices.length) loadVoices();
+    const u = new SpeechSynthesisUtterance();
+    if (voice || !voices.length) {
+      // With no voice list yet, asking for Japanese still works on many devices.
+      u.text = SPOKEN[id] || w.kana;
+      u.lang = voice?.lang || "ja-JP";
+      if (voice) u.voice = voice;
+    } else {
+      u.text = w.ro.replace(/!/g, ""); // no Japanese voice: the romaji read aloud is closer than kana
+    }
+    const shout = w.group === "shout";
+    u.rate = shout ? 1.1 : 1;
+    u.pitch = shout ? 1.15 : 1;
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   } catch { /* speech is optional */ }

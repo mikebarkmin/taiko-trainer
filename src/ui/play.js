@@ -3,10 +3,11 @@
 import { resolve, duration, totalBeats, fmtTime, clampBpm, MIN_BPM, MAX_BPM } from "../core/timeline.js";
 import { WORDS, fmtBeats } from "../core/words.js";
 import { createDrum } from "../drum.js";
-import { speak } from "../audio.js";
+import { speak, voiceStatus, voiceClips } from "../audio.js";
 import { $, $$, esc, tokens, itemOptions } from "./render.js";
 import { createLessonPlayer } from "./lesson-player.js";
 import { describeVideo } from "../core/lessons.js";
+import { t, num } from "../i18n.js";
 
 const FALLBACK = "pattern:b-don-doko";
 
@@ -97,7 +98,7 @@ export function mountPlay(app) {
     els.notes.hidden = !current.item.notes;
     if (isLesson()) {
       const n = current.item.strikes.length;
-      els.info.textContent = `${describeVideo(current.item.video)} · ${n} strike${n === 1 ? "" : "s"}`;
+      els.info.textContent = `${describeVideo(current.item.video)} · ${t("strikes", { n })}`;
     }
   }
 
@@ -105,8 +106,8 @@ export function mountPlay(app) {
     const parts = [];
     if (current.kind === "song") parts.push(`× ${sec.repeats}`);
     parts.push(`${Math.round(clampBpm(sec.bpm * factor()))} bpm`);
-    if (sec.pattern.swing) parts.push("swing");
-    if (sec.pattern.drum === "shime") parts.push("small drum");
+    if (sec.pattern.swing) parts.push(t("play.swing"));
+    if (sec.pattern.drum === "shime") parts.push(t("play.smallDrum"));
     return parts.join(" · ");
   }
 
@@ -132,11 +133,11 @@ export function mountPlay(app) {
   function renderLength() {
     if (current.kind === "song") {
       const n = resolved.sections.length;
-      els.info.textContent = n ? `${n} section${n === 1 ? "" : "s"} · ${fmtBeats(totalBeats(resolved))} beats · ${fmtTime(duration(resolved, factor()))}` : "";
+      els.info.textContent = n ? t("play.songLength", { n, beats: fmtBeats(totalBeats(resolved)), time: fmtTime(duration(resolved, factor())) }) : "";
     } else {
       const b = resolved.sections[0]?.beats || 0;
       const secs = b ? (b * 60) / S.bpm : 0;
-      els.info.textContent = b ? `${fmtBeats(b)} beats · one round takes ${secs.toFixed(1)} s` : "";
+      els.info.textContent = b ? t("play.patternLength", { beats: fmtBeats(b), secs: num(secs, 1) }) : "";
     }
   }
 
@@ -144,12 +145,10 @@ export function mountPlay(app) {
     els.bpmInput.value = S.bpm;
     els.bpmRange.value = S.bpm;
     const own = current.item.bpm;
-    els.bpmReset.textContent = `Reset to ${own}`;
+    els.bpmReset.textContent = t("play.reset", { bpm: own });
     els.bpmReset.disabled = S.bpm === own;
     const hasOwnTempo = current.kind === "song" && current.item.sections.some((s) => s.bpm);
-    els.tempoHint.textContent = hasOwnTempo
-      ? `Song tempo is ${own}. Sections with their own tempo speed up or slow down by the same amount.`
-      : "";
+    els.tempoHint.textContent = hasOwnTempo ? t("play.songTempo", { bpm: own }) : "";
     els.tempoHint.hidden = !hasOwnTempo;
     $$("[data-meta]", els.sheet).forEach((el) => {
       const sec = resolved.sections[+el.dataset.meta];
@@ -182,7 +181,7 @@ export function mountPlay(app) {
 
   const handlers = {
     onCount(n) {
-      setNow(String(n), n === 4 ? "go!" : "");
+      setNow(String(n), n === 4 ? t("play.go") : "");
       drum.setWord(String(n));
       pulse(n - 1);
     },
@@ -205,9 +204,9 @@ export function mountPlay(app) {
       if (current.kind === "song") {
         const repEl = els.sheet.querySelector(`[data-rep="${ev.si}"]`);
         if (repEl) repEl.textContent = `${ev.rep + 1} / ${sec.repeats}`;
-        els.status.textContent = `Section ${ev.si + 1} of ${resolved.sections.length} · repeat ${ev.rep + 1} of ${sec.repeats} · ${bpm} bpm${round > 1 ? ` · round ${round}` : ""}`;
+        els.status.textContent = t("play.songStatus", { si: ev.si + 1, n: resolved.sections.length, rep: ev.rep + 1, reps: sec.repeats, bpm, round });
       } else {
-        els.status.textContent = `Round ${round} · ${bpm} bpm`;
+        els.status.textContent = t("play.patternStatus", { round, bpm });
       }
       if (ev.si !== lastSi && secEl && !inView(secEl)) {
         secEl.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
@@ -217,7 +216,7 @@ export function mountPlay(app) {
     onHit(ev) { drum.hit(ev, { lead: true }); },
     onShout(ev) {
       drum.shout(ev.id);
-      if (S.speak) speak(ev.id);
+      if (S.speak && !ev.voiced) speak(ev.id);
     },
     onStop() {
       mine = false;
@@ -231,8 +230,8 @@ export function mountPlay(app) {
 
   function syncButton() {
     els.playBtn.innerHTML = mine
-      ? `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" rx="1"></rect></svg>Stop`
-      : `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 .5 9.5 5 1 9.5z"></path></svg>Play`;
+      ? `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" rx="1"></rect></svg>${t("btn.stop")}`
+      : `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 .5 9.5 5 1 9.5z"></path></svg>${t("btn.play")}`;
     els.playBtn.classList.toggle("is-playing", mine);
   }
 
@@ -244,10 +243,11 @@ export function mountPlay(app) {
       loop: () => S.loop,
       guide: () => S.guide,
       click: () => S.click,
+      speak: () => S.speak,
       countIn: S.countIn,
     }, handlers);
     if (!ok) {
-      els.status.textContent = "Nothing to play yet. Add words to this pattern in Patterns & songs.";
+      els.status.textContent = t("play.nothing");
       return;
     }
     mine = true;
@@ -279,6 +279,18 @@ export function mountPlay(app) {
     const sec = resolved.sections[+tok.dataset.si];
     app.playWord(drum, sec.ids[+tok.dataset.ti], sec.pattern.drum);
   });
+
+  // Without a Japanese voice the shouts come out in English: say how to fix that.
+  // (Not needed when the app has its own recorded shouts.)
+  const voiceHints = [$("#voiceHint"), $("#pvVoiceHint")];
+  let recorded = false;
+  const syncVoiceHint = () => {
+    const missing = !recorded && voiceStatus() === "other";
+    for (const h of voiceHints) h.hidden = !missing;
+  };
+  voiceStatus(syncVoiceHint);
+  voiceClips.then((ids) => { recorded = [...ids].some((id) => WORDS[id].group === "shout"); syncVoiceHint(); });
+  syncVoiceHint();
 
   refresh();
   syncButton();

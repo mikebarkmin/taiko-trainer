@@ -27,7 +27,7 @@ export class Player {
   /**
    * Start playing. `opts` are read live, so changes apply while playing:
    *   factor(): tempo factor, picked up at the next repetition
-   *   loop(), guide(), click(): booleans
+   *   loop(), guide(), click(), speak(): booleans (speak: recorded shouts)
    *   countIn: boolean, read once at the start
    * `handlers`: onCount(n), onBeat(ev), onToken(ev), onHit(ev),
    *   onShout(ev), onStop()
@@ -114,9 +114,13 @@ export class Player {
       case "token":
         this.#later(() => this.h.onToken?.(ev), at);
         break;
-      case "shout":
-        this.#later(() => this.h.onShout?.(ev), at);
+      case "shout": {
+        // A recorded shout is scheduled on the beat; `voiced` tells the
+        // screen it doesn't need the device voice.
+        const voiced = !!this.opts.speak?.() && this.synth.voice(ev.id, at, this.out);
+        this.#later(() => this.h.onShout?.({ ...ev, voiced }), at);
         break;
+      }
     }
   }
 }

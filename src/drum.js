@@ -2,6 +2,8 @@
 // sticks that swing to where each hit lands.
 
 import { WORDS } from "./core/words.js";
+import { t } from "./i18n.js";
+import { esc } from "./ui/render.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const CX = 200;
@@ -37,7 +39,7 @@ export function createDrum(host, { onTap } = {}) {
     tacks += `<circle class="d-tack" cx="${(CX + 170 * Math.cos(a)).toFixed(1)}" cy="${(CY + 170 * Math.sin(a)).toFixed(1)}" r="3.4"></circle>`;
   }
   host.innerHTML = `<div class="drum-wrap">
-    <svg class="drum" viewBox="0 0 400 430" role="img" aria-label="Taiko drum. Tap the middle or the rim to play it.">
+    <svg class="drum" viewBox="0 0 400 430" role="img" aria-label="${esc(t("drum.label"))}">
       <defs><radialGradient id="${gid}" cx="50%" cy="44%" r="62%">
         <stop offset="0%" style="stop-color:var(--skin)"></stop>
         <stop offset="70%" style="stop-color:var(--skin)"></stop>
@@ -94,12 +96,12 @@ export function createDrum(host, { onTap } = {}) {
     el.animate(frames, { duration: lead ? 260 : 200, easing: "cubic-bezier(.3,.6,.4,1)" });
   }
 
-  function ripple(p, where, vol) {
+  function ripple(p, hand, where, vol) {
     const g = document.createElementNS(NS, "g");
     g.setAttribute("transform", `translate(${p[0]} ${p[1]})`);
     const c = document.createElementNS(NS, "circle");
     c.setAttribute("r", where === "rim" ? 20 : vol === "big" ? 46 : vol === "medium" ? 32 : 20);
-    c.setAttribute("class", `ripple ${where}`);
+    c.setAttribute("class", `ripple ${where} ${hand}`);
     g.appendChild(c);
     fx.appendChild(g);
     if (!c.animate) { setTimeout(() => g.remove(), 400); return; }
@@ -109,8 +111,9 @@ export function createDrum(host, { onTap } = {}) {
     c.animate(frames, { duration: reduceMotion() ? 250 : 520, easing: "ease-out" }).onfinish = () => g.remove();
   }
 
-  function flash(where, vol) {
+  function flash(hand, where, vol) {
     const el = where === "rim" ? rimFlash : skinFlash;
+    el.setAttribute("class", `${where === "rim" ? "d-rim-flash" : "d-skin-flash"} ${hand}`);
     const peak = where === "rim" ? 0.75 : vol === "small" ? 0.1 : vol === "medium" ? 0.18 : 0.28;
     el.animate?.([{ opacity: peak }, { opacity: 0 }], { duration: 300, easing: "ease-out" });
   }
@@ -120,7 +123,7 @@ export function createDrum(host, { onTap } = {}) {
     hit(h, { lead = false } = {}) {
       const p = TARGET[h.hand][h.where === "rim" ? "rim" : "center"];
       swing(h.hand, p, lead);
-      const show = () => { ripple(p, h.where, h.vol); flash(h.where, h.vol); };
+      const show = () => { ripple(p, h.hand, h.where, h.vol); flash(h.hand, h.where, h.vol); };
       if (lead) setTimeout(show, 90); else show();
     },
     /** Write a word (or a count) on the drum skin. */

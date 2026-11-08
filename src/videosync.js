@@ -20,8 +20,9 @@ export class VideoSync {
   }
 
   /**
-   * opts (read live): guide(), loop(), range() → {start, end} | null
-   * handlers: onHit(strike), onShout(strike), onStrike(strike, index), onLoop()
+   * opts (read live): guide(), speak(), loop(), range() → {start, end} | null
+   * handlers: onHit(strike), onShout(strike, voiced), onStrike(strike, index), onLoop()
+   *   (`voiced`: a recorded clip of the shout is already scheduled)
    */
   attach(media, strikes, opts, handlers) {
     this.detach();
@@ -106,7 +107,8 @@ export class VideoSync {
       const s = this.strikes[i];
       const delay = Math.max(0, (s.t - vt) / rate);
       if (s.shout) {
-        this.#later(() => { this.h.onShout?.(s); this.h.onStrike?.(s, i); }, delay);
+        const voiced = !!this.opts.speak?.() && this.synth.voice(s.shout, now + delay, this.out);
+        this.#later(() => { this.h.onShout?.(s, voiced); this.h.onStrike?.(s, i); }, delay);
       } else {
         if (this.opts.guide?.()) this.synth.hit(strikeHit(s), now + delay, this.out);
         this.#later(() => this.h.onHit?.(s), delay - STICK_LEAD);

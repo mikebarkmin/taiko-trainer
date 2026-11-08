@@ -1,6 +1,8 @@
 // Video files live in IndexedDB (localStorage is far too small for video).
 // Keyed by lesson id. Everything stays on this device.
 
+import { t, num } from "./i18n.js";
+
 const DB_NAME = "taiko-trainer";
 const STORE = "videos";
 let dbPromise = null;
@@ -8,12 +10,12 @@ let dbPromise = null;
 function openDb() {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
-      if (!globalThis.indexedDB) { reject(new Error("This browser cannot store videos.")); return; }
+      if (!globalThis.indexedDB) { reject(new Error(t("store.noVideos"))); return; }
       const req = indexedDB.open(DB_NAME, 1);
       req.onupgradeneeded = () => req.result.createObjectStore(STORE);
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error || new Error("Could not open storage."));
-      req.onblocked = () => reject(new Error("Close other Taiko Trainer tabs and try again."));
+      req.onerror = () => reject(req.error || new Error(t("store.cantOpen")));
+      req.onblocked = () => reject(new Error(t("store.otherTabs")));
     });
     dbPromise.catch(() => { dbPromise = null; });
   }
@@ -25,8 +27,8 @@ function run(mode, fn) {
     const tx = db.transaction(STORE, mode);
     const req = fn(tx.objectStore(STORE));
     tx.oncomplete = () => resolve(req?.result);
-    tx.onerror = () => reject(tx.error || req?.error || new Error("Storage failed."));
-    tx.onabort = () => reject(tx.error || new Error(tx.error?.name === "QuotaExceededError" ? "The device is out of space for videos." : "Storage failed."));
+    tx.onerror = () => reject(tx.error || req?.error || new Error(t("store.failed")));
+    tx.onabort = () => reject(tx.error || new Error(tx.error?.name === "QuotaExceededError" ? t("store.full") : t("store.failed")));
   }));
 }
 
@@ -99,8 +101,8 @@ export async function storageSummary() {
   try {
     const e = await navigator.storage?.estimate?.();
     if (!e || !e.quota) return "";
-    const mb = (n) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1e6))} MB`);
-    return `${mb(e.usage || 0)} used of about ${mb(e.quota)} this browser allows.`;
+    const mb = (n) => (n >= 1e9 ? `${num(n / 1e9, 1)} GB` : `${Math.max(1, Math.round(n / 1e6))} MB`);
+    return t("store.usage", { used: mb(e.usage || 0), quota: mb(e.quota) });
   } catch {
     return "";
   }

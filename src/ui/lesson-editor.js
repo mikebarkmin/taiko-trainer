@@ -12,6 +12,7 @@ import { html5Media, youtubeMedia } from "../media.js";
 import { VideoSync } from "../videosync.js";
 import { createLane } from "./lane.js";
 import { $, $$, esc, itemOptions } from "./render.js";
+import { t, quote } from "../i18n.js";
 
 const SPEEDS = [0.25, 0.5, 0.75, 1];
 const SHOUT_IDS = Object.keys(WORDS).filter((id) => WORDS[id].group === "shout");
@@ -19,82 +20,82 @@ const UNDO_LIMIT = 100;
 const round3 = (t) => Math.round(t * 1000) / 1000;
 
 const PADS = [
-  { hand: "L", where: "rim", key: "D", side: "Left rim" },
-  { hand: "L", where: "center", key: "F", side: "Left skin" },
-  { hand: "R", where: "center", key: "J", side: "Right skin" },
-  { hand: "R", where: "rim", key: "K", side: "Right rim" },
+  { hand: "L", where: "rim", key: "D", side: "le.leftRim" },
+  { hand: "L", where: "center", key: "F", side: "le.leftSkin" },
+  { hand: "R", where: "center", key: "J", side: "le.rightSkin" },
+  { hand: "R", where: "rim", key: "K", side: "le.rightRim" },
 ];
 
 const TEMPLATE = `
   <div class="le-top">
-    <a class="btn small ghost" href="#library">← Patterns &amp; songs</a>
-    <div class="field grow"><label for="leName">Lesson name</label><input id="leName" type="text" maxlength="80" autocomplete="off"></div>
+    <a class="btn small ghost" href="#library">${esc(t("le.back"))}</a>
+    <div class="field grow"><label for="leName">${esc(t("le.name"))}</label><input id="leName" type="text" maxlength="80" autocomplete="off"></div>
     <span class="msg" id="leSaved" role="status"></span>
   </div>
   <p class="notice err" id="leMissing" hidden></p>
 
   <div class="le-grid" id="leBody">
-    <section class="le-video" aria-label="Video">
+    <section class="le-video" aria-label="${esc(t("le.video"))}">
       <div class="media-host" id="leMedia"></div>
       <div class="le-source" id="leSource">
-        <p class="le-source-title" id="leSourceTitle">Pick the video to mark strikes on</p>
+        <p class="le-source-title" id="leSourceTitle">${esc(t("le.pick"))}</p>
         <div class="row">
-          <label class="btn primary small" for="leFile">Choose a video file</label>
+          <label class="btn primary small" for="leFile">${esc(t("le.chooseFile"))}</label>
           <input id="leFile" type="file" accept="video/*" class="sr-only">
-          <span class="hint">or</span>
+          <span class="hint">${esc(t("le.or"))}</span>
           <div class="link-row">
-            <input id="leLink" type="url" inputmode="url" autocomplete="off" placeholder="Paste a YouTube or video link" aria-label="Video link">
-            <button type="button" class="btn small" id="leUseLink">Use link</button>
+            <input id="leLink" type="url" inputmode="url" autocomplete="off" placeholder="${esc(t("le.linkPlaceholder"))}" aria-label="${esc(t("le.link"))}">
+            <button type="button" class="btn small" id="leUseLink">${esc(t("le.useLink"))}</button>
           </div>
         </div>
-        <p class="hint">A video file stays on this device. A YouTube link also works for anyone you share the lesson with.</p>
+        <p class="hint">${esc(t("le.sourceHint"))}</p>
       </div>
       <div class="le-transport">
-        <button type="button" class="btn primary" id="lePlay">Play</button>
-        <div class="seek-btns" role="group" aria-label="Move in the video">
+        <button type="button" class="btn primary" id="lePlay">${esc(t("btn.play"))}</button>
+        <div class="seek-btns" role="group" aria-label="${esc(t("le.seek"))}">
           <button type="button" class="icon-btn wide" data-seek="-1">−1 s</button>
           <button type="button" class="icon-btn wide" data-seek="-0.1">−0.1</button>
           <button type="button" class="icon-btn wide" data-seek="0.1">+0.1</button>
           <button type="button" class="icon-btn wide" data-seek="1">+1 s</button>
         </div>
         <span class="clock" id="leClock">0:00.0</span>
-        <label class="mini" for="leSpeed">Speed
+        <label class="mini" for="leSpeed">${esc(t("le.speed"))}
           <select id="leSpeed">${SPEEDS.map((r) => `<option value="${r}"${r === 1 ? " selected" : ""}>${r}×</option>`).join("")}</select>
         </label>
-        <label class="check" for="leHear"><input type="checkbox" id="leHear" checked> Hear strikes</label>
-        <button type="button" class="btn small ghost" id="leChange">Change video</button>
+        <label class="check" for="leHear"><input type="checkbox" id="leHear" checked> ${esc(t("le.hear"))}</label>
+        <button type="button" class="btn small ghost" id="leChange">${esc(t("le.change"))}</button>
       </div>
     </section>
 
     <section class="le-side" aria-labelledby="leAddH">
-      <h2 id="leAddH">Add strikes</h2>
-      <p class="hint">Play the video and tap along: each tap adds a strike at the video’s time. Slow the video down for fast parts, or pause and tap to place one exactly.</p>
+      <h2 id="leAddH">${esc(t("le.addH"))}</h2>
+      <p class="hint">${esc(t("le.addHint"))}</p>
       <div class="pads" id="lePads">
-        ${PADS.map((p) => `<button type="button" class="pad ${p.where}" data-hand="${p.hand}" data-where="${p.where}">
-          <b class="pad-word"></b><span>${p.side}</span><kbd>${p.key}</kbd></button>`).join("")}
+        ${PADS.map((p) => `<button type="button" class="pad ${p.where} ${p.hand}" data-hand="${p.hand}" data-where="${p.where}">
+          <b class="pad-word"></b><span>${esc(t(p.side))}</span><kbd>${p.key}</kbd></button>`).join("")}
       </div>
       <div class="seg-row">
-        <span class="lbl" id="leSizeLbl">Size</span>
+        <span class="lbl" id="leSizeLbl">${esc(t("le.size"))}</span>
         <div class="seg" role="group" aria-labelledby="leSizeLbl" id="leSize">
-          <button type="button" data-size="big" aria-pressed="true">Big</button>
-          <button type="button" data-size="medium" aria-pressed="false">Medium</button>
-          <button type="button" data-size="small" aria-pressed="false">Small</button>
+          <button type="button" data-size="big" aria-pressed="true">${esc(t("le.big"))}</button>
+          <button type="button" data-size="medium" aria-pressed="false">${esc(t("le.medium"))}</button>
+          <button type="button" data-size="small" aria-pressed="false">${esc(t("le.small"))}</button>
         </div>
       </div>
       <div class="row shout-row">
-        <label class="mini" for="leShout">Shout
+        <label class="mini" for="leShout">${esc(t("le.shout"))}
           <select id="leShout">${SHOUT_IDS.map((id) => `<option value="${id}">${esc(WORDS[id].ro)}</option>`).join("")}</select>
         </label>
-        <button type="button" class="btn small" id="leAddShout">Add shout here</button>
+        <button type="button" class="btn small" id="leAddShout">${esc(t("le.addShout"))}</button>
       </div>
       <div class="row tools">
-        <button type="button" class="btn small" id="leUndo">Undo</button>
-        <button type="button" class="btn small" id="leRedo">Redo</button>
+        <button type="button" class="btn small" id="leUndo">${esc(t("btn.undo"))}</button>
+        <button type="button" class="btn small" id="leRedo">${esc(t("btn.redo"))}</button>
       </div>
 
       <details class="le-more">
-        <summary>Move all strikes</summary>
-        <p class="hint">If your taps landed a little late or early everywhere, move them all at once.</p>
+        <summary>${esc(t("le.moveAll"))}</summary>
+        <p class="hint">${esc(t("le.moveAllHint"))}</p>
         <div class="row">
           <button type="button" class="btn small" data-shift="-0.05">−50 ms</button>
           <button type="button" class="btn small" data-shift="-0.01">−10 ms</button>
@@ -104,33 +105,33 @@ const TEMPLATE = `
       </details>
 
       <details class="le-more">
-        <summary>Add a whole pattern</summary>
-        <p class="hint">For a steady part of the video: pick the pattern, find where it starts, and set the tempo.</p>
-        <div class="field"><label for="leInsPattern">Pattern</label><select id="leInsPattern"></select></div>
+        <summary>${esc(t("le.addPattern"))}</summary>
+        <p class="hint">${esc(t("le.addPatternHint"))}</p>
+        <div class="field"><label for="leInsPattern">${esc(t("le.pattern"))}</label><select id="leInsPattern"></select></div>
         <div class="row">
-          <div class="field small"><label for="leInsStart">Starts at</label><input id="leInsStart" type="text" inputmode="decimal" value="0:00.0"></div>
-          <button type="button" class="btn small" data-now="leInsStart">Video time</button>
+          <div class="field small"><label for="leInsStart">${esc(t("le.startsAt"))}</label><input id="leInsStart" type="text" inputmode="decimal" value="0:00.0"></div>
+          <button type="button" class="btn small" data-now="leInsStart">${esc(t("le.videoTime"))}</button>
         </div>
         <div class="row">
-          <div class="field small"><label for="leInsBpm">Tempo (bpm)</label><input id="leInsBpm" type="number" min="30" max="240" inputmode="numeric"></div>
-          <div class="field small"><label for="leInsRepeats">Times</label><input id="leInsRepeats" type="number" min="1" max="99" value="4" inputmode="numeric"></div>
+          <div class="field small"><label for="leInsBpm">${esc(t("le.tempo"))}</label><input id="leInsBpm" type="number" min="30" max="240" inputmode="numeric"></div>
+          <div class="field small"><label for="leInsRepeats">${esc(t("le.times"))}</label><input id="leInsRepeats" type="number" min="1" max="99" value="4" inputmode="numeric"></div>
         </div>
-        <button type="button" class="btn small primary" id="leInsert">Add pattern</button>
+        <button type="button" class="btn small primary" id="leInsert">${esc(t("le.insert"))}</button>
       </details>
 
       <details class="le-more">
-        <summary>Delete many strikes</summary>
+        <summary>${esc(t("le.deleteMany"))}</summary>
         <div class="row">
-          <div class="field small"><label for="leDelFrom">From</label><input id="leDelFrom" type="text" inputmode="decimal" value="0:00.0"></div>
-          <button type="button" class="btn small" data-now="leDelFrom">Video time</button>
+          <div class="field small"><label for="leDelFrom">${esc(t("le.from"))}</label><input id="leDelFrom" type="text" inputmode="decimal" value="0:00.0"></div>
+          <button type="button" class="btn small" data-now="leDelFrom">${esc(t("le.videoTime"))}</button>
         </div>
         <div class="row">
-          <div class="field small"><label for="leDelTo">To</label><input id="leDelTo" type="text" inputmode="decimal" value="0:00.0"></div>
-          <button type="button" class="btn small" data-now="leDelTo">Video time</button>
+          <div class="field small"><label for="leDelTo">${esc(t("le.to"))}</label><input id="leDelTo" type="text" inputmode="decimal" value="0:00.0"></div>
+          <button type="button" class="btn small" data-now="leDelTo">${esc(t("le.videoTime"))}</button>
         </div>
         <div class="row">
-          <button type="button" class="btn small" id="leDelRange">Delete these</button>
-          <button type="button" class="btn small ghost" id="leClear">Delete all strikes</button>
+          <button type="button" class="btn small" id="leDelRange">${esc(t("le.deleteThese"))}</button>
+          <button type="button" class="btn small ghost" id="leClear">${esc(t("le.deleteAll"))}</button>
         </div>
       </details>
       <p class="msg" id="leMsg" role="status"></p>
@@ -139,17 +140,17 @@ const TEMPLATE = `
 
   <section class="le-lane" id="leLaneBox" aria-labelledby="leLaneH">
     <div class="le-lane-head">
-      <h2 id="leLaneH">Timeline</h2>
+      <h2 id="leLaneH">${esc(t("le.timeline"))}</h2>
       <span class="meta" id="leCount"></span>
-      <label class="mini zoom" for="leZoom">Zoom <input type="range" id="leZoom" min="40" max="400" step="10" value="150"></label>
+      <label class="mini zoom" for="leZoom">${esc(t("le.zoom"))} <input type="range" id="leZoom" min="40" max="400" step="10" value="150"></label>
     </div>
     <div id="leLane"></div>
-    <p class="hint">Tap the timeline to jump there. Tap a strike to change it.</p>
+    <p class="hint">${esc(t("le.laneHint"))}</p>
   </section>
 
-  <section class="le-selected" id="leSelected" aria-label="Selected strike"></section>
+  <section class="le-selected" id="leSelected" aria-label="${esc(t("le.selected"))}"></section>
 
-  <div class="field le-notes"><label for="leNotes">Notes for the player</label><textarea id="leNotes" rows="2" maxlength="500" placeholder="What to watch for"></textarea></div>
+  <div class="field le-notes"><label for="leNotes">${esc(t("le.notes"))}</label><textarea id="leNotes" rows="2" maxlength="500" placeholder="${esc(t("le.notesPlaceholder"))}"></textarea></div>
 `;
 
 export function mountLessonEditor(app) {
@@ -192,7 +193,7 @@ export function mountLessonEditor(app) {
     els.laneBox.hidden = !found;
     els.selected.hidden = !found;
     if (!found) {
-      els.missing.textContent = "This video lesson doesn’t exist on this device. It may have been deleted.";
+      els.missing.textContent = t("le.missing");
       return;
     }
     if (lesson && lesson.id === id) { startLoop(); return; }
@@ -237,19 +238,19 @@ export function mountLessonEditor(app) {
     media = null;
     const v = lesson.video;
     renderSource();
-    if (!v) { els.mediaHost.innerHTML = `<div class="video-empty">No video yet</div>`; return; }
+    if (!v) { els.mediaHost.innerHTML = `<div class="video-empty">${esc(t("le.noVideo"))}</div>`; return; }
     let src = blobOverride || null;
     if (v.type === "file" && !src) {
       src = await getVideo(lesson.id);
       if (my !== token) return;
       if (!src) {
-        els.mediaHost.innerHTML = `<div class="video-empty">The video file isn’t on this device</div>`;
+        els.mediaHost.innerHTML = `<div class="video-empty">${esc(t("le.fileNotHere"))}</div>`;
         showSource = true;
         renderSource();
         return;
       }
     }
-    els.mediaHost.innerHTML = `<div class="video-empty">Loading video…</div>`;
+    els.mediaHost.innerHTML = `<div class="video-empty">${esc(t("pv.loading"))}</div>`;
     try {
       const onState = () => renderTransport();
       media = v.type === "youtube" ? youtubeMedia(els.mediaHost, v.videoId, { onState }) : html5Media(els.mediaHost, src || v.url, { onState });
@@ -263,7 +264,7 @@ export function mountLessonEditor(app) {
       renderTransport();
     } catch (err) {
       if (my !== token) return;
-      els.mediaHost.innerHTML = `<div class="video-empty err">${esc(err.message || "The video couldn’t be loaded.")}</div>`;
+      els.mediaHost.innerHTML = `<div class="video-empty err">${esc(err.message || t("pv.cantLoad"))}</div>`;
       media = null;
       showSource = true;
       renderSource();
@@ -275,38 +276,38 @@ export function mountLessonEditor(app) {
     els.source.hidden = !showSource;
     els.change.hidden = showSource || !v;
     if (v?.type === "file" && !hasVideo(lesson.id)) {
-      els.sourceTitle.textContent = `Attach the video file “${v.name || "video"}” to see this lesson’s video on this device.`;
+      els.sourceTitle.textContent = t("le.attach", { name: quote(v.name || "video") });
     } else {
-      els.sourceTitle.textContent = v ? `Now: ${describeVideo(v)}. Pick a different video:` : "Pick the video to mark strikes on";
+      els.sourceTitle.textContent = v ? t("le.current", { video: describeVideo(v) }) : t("le.pick");
     }
   }
 
   async function useFile(file) {
     if (!file) return;
     if (!/^video\//.test(file.type) && !/\.(mp4|m4v|mov|webm|ogv|mkv|3gp)$/i.test(file.name)) {
-      say("That doesn’t look like a video file.", true);
+      say(t("le.notVideo"), true);
       return;
     }
     const old = lesson.video;
     let note = "";
-    if (old?.type === "file" && old.size && old.size !== file.size) note = " This file isn’t the same size as the original, so check that the strikes still line up.";
-    else if (old && lesson.strikes.length) note = " The strikes stayed where they were. Use “Move all strikes” if the new video starts at a different time.";
+    if (old?.type === "file" && old.size && old.size !== file.size) note = t("le.sizeDiffers");
+    else if (old && lesson.strikes.length) note = t("le.strikesStayed");
     const stored = await putVideo(lesson.id, file);
     lesson.video = { type: "file", name: file.name, size: file.size, mime: file.type, duration: old?.type === "file" ? old.duration : 0 };
     showSource = false;
     saveNow();
-    say((stored ? "Video saved on this device." : "This browser wouldn’t save the video, so it plays only until you close the page.") + note, !stored);
+    say(t(stored ? "le.videoSaved" : "le.videoNotSaved") + note, !stored);
     mountMedia(file);
   }
 
   function useLink() {
     const source = sourceFromLink(els.link.value);
-    if (!source) { say("Paste a YouTube link or a link to a video file (starting with https://).", true); return; }
+    if (!source) { say(t("le.badLink"), true); return; }
     lesson.video = source;
     showSource = false;
     els.link.value = "";
     saveNow();
-    say(source.type === "youtube" ? "YouTube video added." : "Video link added.");
+    say(t(source.type === "youtube" ? "le.ytAdded" : "le.linkAdded"));
     mountMedia();
   }
 
@@ -334,9 +335,9 @@ export function mountLessonEditor(app) {
   }
 
   function addStrike(hand, where) {
-    const t = now();
-    if (t === null) { say("Add a video first.", true); return; }
-    const s = { t, hand, where, vol: size };
+    const at = now();
+    if (at === null) { say(t("le.addVideoFirst"), true); return; }
+    const s = { t: at, hand, where, vol: size };
     commit(mergeStrikes(lesson.strikes, [s]));
     app.synth.ensure();
     app.synth.hit(strikeHit(s), app.synth.now() + 0.005);
@@ -344,9 +345,9 @@ export function mountLessonEditor(app) {
   }
 
   function addShout() {
-    const t = now();
-    if (t === null) { say("Add a video first.", true); return; }
-    commit(mergeStrikes(lesson.strikes, [{ t, shout: els.shout.value }]));
+    const at = now();
+    if (at === null) { say(t("le.addVideoFirst"), true); return; }
+    commit(mergeStrikes(lesson.strikes, [{ t: at, shout: els.shout.value }]));
   }
 
   function flashPad(hand, where) {
@@ -396,7 +397,7 @@ export function mountLessonEditor(app) {
     renderPads();
     renderSelected();
     const n = lesson.strikes.length;
-    els.count.textContent = `${n} strike${n === 1 ? "" : "s"}`;
+    els.count.textContent = t("strikes", { n });
     els.undo.disabled = !undo.length;
     els.redo.disabled = !redo.length;
   }
@@ -409,14 +410,16 @@ export function mountLessonEditor(app) {
     for (const b of $$("[data-size]", els.size)) b.setAttribute("aria-pressed", String(b.dataset.size === size));
   }
 
-  function seg(name, options, value) {
-    return `<div class="seg" role="group" aria-label="${name}">${options.map(([v, label]) =>
-      `<button type="button" data-set="${name}" data-value="${v}" aria-pressed="${v === value}">${label}</button>`).join("")}</div>`;
+  /** A row of toggle buttons that sets `key` (hand, where or vol) on the selected strike. */
+  function seg(key, options, value) {
+    const label = { hand: "le.hand", where: "le.where", vol: "le.size" }[key];
+    return `<div class="seg" role="group" aria-label="${esc(t(label))}">${options.map(([v, text]) =>
+      `<button type="button" data-set="${key}" data-value="${v}" aria-pressed="${v === value}"${key === "hand" ? ` class="hand ${v}"` : ""}>${esc(t(text))}</button>`).join("")}</div>`;
   }
 
   function renderSelected() {
     if (!selected) {
-      els.selected.innerHTML = `<p class="hint">Tap a strike on the timeline to change or delete it. With a strike selected, ← and → move it by 10 ms.</p>`;
+      els.selected.innerHTML = `<p class="hint">${esc(t("le.selectHint"))}</p>`;
       return;
     }
     const i = lesson.strikes.indexOf(selected);
@@ -424,27 +427,27 @@ export function mountLessonEditor(app) {
     els.selected.innerHTML = `
       <div class="sel-head">
         <span class="sel-kana" lang="ja">${w.kana}</span><b>${esc(w.ro)}</b>
-        <span class="meta">Strike ${i + 1} of ${lesson.strikes.length} · ${fmtClock(selected.t, 2)}</span>
+        <span class="meta">${esc(t("le.strikeOf", { i: i + 1, n: lesson.strikes.length }))} · ${fmtClock(selected.t, 2)}</span>
       </div>
       <div class="row">
-        <div class="field small"><label for="selTime">Time (seconds)</label>
+        <div class="field small"><label for="selTime">${esc(t("le.time"))}</label>
           <input id="selTime" type="number" step="0.001" min="0" inputmode="decimal" value="${selected.t.toFixed(3)}"></div>
         <div class="row tight">
           <button type="button" class="btn small" data-nudge="-0.01">−10 ms</button>
           <button type="button" class="btn small" data-nudge="0.01">+10 ms</button>
-          <button type="button" class="btn small" data-go>Play from just before</button>
+          <button type="button" class="btn small" data-go>${esc(t("le.playBefore"))}</button>
         </div>
       </div>
       ${selected.shout
-        ? `<label class="mini" for="selShout">Shout <select id="selShout">${SHOUT_IDS.map((id) => `<option value="${id}"${id === selected.shout ? " selected" : ""}>${esc(WORDS[id].ro)}</option>`).join("")}</select></label>`
-        : `<div class="seg-row">${seg("Hand", [["R", "Right"], ["L", "Left"]], selected.hand)}${seg("Where", [["center", "Skin"], ["rim", "Rim"]], selected.where)}${seg("Size", [["big", "Big"], ["medium", "Medium"], ["small", "Small"]], selected.vol)}</div>`}
-      <div class="row"><button type="button" class="btn small ghost" data-delete>Delete strike</button></div>`;
+        ? `<label class="mini" for="selShout">${esc(t("le.shout"))} <select id="selShout">${SHOUT_IDS.map((id) => `<option value="${id}"${id === selected.shout ? " selected" : ""}>${esc(WORDS[id].ro)}</option>`).join("")}</select></label>`
+        : `<div class="seg-row">${seg("hand", [["R", "le.right"], ["L", "le.left"]], selected.hand)}${seg("where", [["center", "le.skin"], ["rim", "le.rim"]], selected.where)}${seg("vol", [["big", "le.big"], ["medium", "le.medium"], ["small", "le.small"]], selected.vol)}</div>`}
+      <div class="row"><button type="button" class="btn small ghost" data-delete>${esc(t("le.deleteStrike"))}</button></div>`;
   }
 
   function renderTransport() {
     if (!lesson) return;
     const playing = media && !media.paused;
-    els.play.textContent = playing ? "Pause" : "Play";
+    els.play.textContent = t(playing ? "btn.pause" : "btn.play");
     els.play.classList.toggle("is-playing", !!playing);
     els.play.disabled = !media;
   }
@@ -474,7 +477,7 @@ export function mountLessonEditor(app) {
   // ---------- saving ----------
   function scheduleSave() {
     clearTimeout(saveTimer);
-    els.saved.textContent = "Saving…";
+    els.saved.textContent = t("le.saving");
     saveTimer = setTimeout(saveNow, 400);
   }
 
@@ -490,7 +493,7 @@ export function mountLessonEditor(app) {
       ? c.lessons.map((l) => (l.id === clean.id ? clean : l))
       : c.lessons.concat(clean);
     const ok = app.setCustom({ ...c, lessons });
-    els.saved.textContent = ok ? "Saved" : "Not saved: this browser’s storage is full or blocked";
+    els.saved.textContent = t(ok ? "le.saved" : "le.notSaved");
     els.saved.classList.toggle("err", !ok);
   }
 
@@ -513,42 +516,41 @@ export function mountLessonEditor(app) {
   els.play.addEventListener("click", () => {
     if (!media) return;
     app.synth.ensure();
-    if (media.paused) media.play()?.catch?.(() => say("Tap the video itself to start it.", true));
+    if (media.paused) media.play()?.catch?.(() => say(t("le.tapVideo"), true));
     else media.pause();
   });
   els.speed.addEventListener("change", () => media?.setRate(Number(els.speed.value)));
   els.zoom.addEventListener("input", () => lane.setZoom(Number(els.zoom.value)));
 
   root.addEventListener("click", (e) => {
-    const t = e.target;
-    const seek = t.closest("[data-seek]");
+    const target = e.target;
+    const seek = target.closest("[data-seek]");
     if (seek && media) { media.seek(media.time + Number(seek.dataset.seek)); return; }
-    const sizeBtn = t.closest("[data-size]");
+    const sizeBtn = target.closest("[data-size]");
     if (sizeBtn) { size = sizeBtn.dataset.size; renderPads(); return; }
-    const pad = t.closest(".pad");
+    const pad = target.closest(".pad");
     if (pad && e.detail === 0) { addStrike(pad.dataset.hand, pad.dataset.where); return; } // keyboard activation
-    const shift = t.closest("[data-shift]");
+    const shift = target.closest("[data-shift]");
     if (shift) {
       if (!lesson.strikes.length) return;
-      commit(shiftStrikes(lesson.strikes, Number(shift.dataset.shift)), `Moved all strikes by ${Math.round(Number(shift.dataset.shift) * 1000)} ms.`);
+      commit(shiftStrikes(lesson.strikes, Number(shift.dataset.shift)), t("le.moved", { ms: Math.round(Number(shift.dataset.shift) * 1000) }));
       return;
     }
-    const nowBtn = t.closest("[data-now]");
+    const nowBtn = target.closest("[data-now]");
     if (nowBtn) { if (media) el(nowBtn.dataset.now).value = fmtClock(media.time, 2); return; }
-    const set = t.closest("[data-set]");
+    const set = target.closest("[data-set]");
     if (set && selected) {
-      const key = { Hand: "hand", Where: "where", Size: "vol" }[set.dataset.set];
-      replaceSelected({ [key]: set.dataset.value });
+      replaceSelected({ [set.dataset.set]: set.dataset.value });
       return;
     }
-    const nudge = t.closest("[data-nudge]");
+    const nudge = target.closest("[data-nudge]");
     if (nudge && selected) { replaceSelected({ t: selected.t + Number(nudge.dataset.nudge) }); return; }
-    if (t.closest("[data-go]") && selected && media) {
+    if (target.closest("[data-go]") && selected && media) {
       media.seek(Math.max(0, selected.t - 1.5));
       media.play()?.catch?.(() => {});
       return;
     }
-    if (t.closest("[data-delete]")) deleteSelected();
+    if (target.closest("[data-delete]")) deleteSelected();
   });
 
   els.pads.addEventListener("pointerdown", (e) => {
@@ -568,28 +570,28 @@ export function mountLessonEditor(app) {
     const start = parseClock(els.insStart.value);
     const bpm = Number(els.insBpm.value);
     const repeats = Math.max(1, Math.min(99, Math.round(Number(els.insRepeats.value) || 1)));
-    if (!p) return say("Pick a pattern.", true);
-    if (!Number.isFinite(start)) return say("Write the start time like 1:23.4.", true);
-    if (!(bpm >= 30 && bpm <= 240)) return say("Use a tempo between 30 and 240 bpm.", true);
+    if (!p) return say(t("le.pickPattern"), true);
+    if (!Number.isFinite(start)) return say(t("le.badStart"), true);
+    if (!(bpm >= 30 && bpm <= 240)) return say(t("le.badTempo"), true);
     const added = patternStrikes(p, { start, bpm, repeats });
-    commit(mergeStrikes(lesson.strikes, added), `Added ${added.length} strikes from “${p.name}”.`);
+    commit(mergeStrikes(lesson.strikes, added), t("le.addedFrom", { n: added.length, name: quote(p.name) }));
     lane.reveal(start);
   });
 
   el("leDelRange").addEventListener("click", () => {
     const a = parseClock(el("leDelFrom").value);
     const b = parseClock(el("leDelTo").value);
-    if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return say("Set “To” later than “From”, like 0:10.0 to 0:20.0.", true);
+    if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return say(t("le.badRange"), true);
     const keep = lesson.strikes.filter((s) => s.t < a || s.t > b);
     const n = lesson.strikes.length - keep.length;
-    if (!n) return say("There are no strikes in that part.");
-    commit(keep, `Deleted ${n} strike${n === 1 ? "" : "s"}. Undo brings them back.`);
+    if (!n) return say(t("le.noneThere"));
+    commit(keep, t("le.deletedN", { n }));
   });
 
   el("leClear").addEventListener("click", () => {
     if (!lesson.strikes.length) return;
-    if (!confirm(`Delete all ${lesson.strikes.length} strikes?`)) return;
-    commit([], "Deleted all strikes. Undo brings them back.");
+    if (!confirm(t("le.confirmClear", { n: lesson.strikes.length }))) return;
+    commit([], t("le.cleared"));
   });
 
   els.selected.addEventListener("change", (e) => {

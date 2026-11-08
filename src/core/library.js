@@ -5,6 +5,7 @@
 import { MIN_BPM, MAX_BPM } from "./timeline.js";
 import { newId, cleanId, text, clampInt } from "./util.js";
 import { normalizeLesson } from "./lessons.js";
+import { t, localize } from "../i18n.js";
 
 export { newId };
 
@@ -16,7 +17,7 @@ export function normalizePattern(p) {
   if (!p || typeof p !== "object") return null;
   return {
     id: cleanId(p.id) || newId("p"),
-    name: text(p.name, 80).trim() || "Untitled pattern",
+    name: text(p.name, 80).trim() || t("data.untitledPattern"),
     words: text(p.words, 2000).trim(),
     bpm: clampInt(p.bpm, MIN_BPM, MAX_BPM, 90),
     swing: p.swing === true,
@@ -31,7 +32,7 @@ export function normalizeSong(s) {
   const sections = Array.isArray(s.sections) ? s.sections : [];
   return {
     id: cleanId(s.id) || newId("s"),
-    name: text(s.name, 80).trim() || "Untitled song",
+    name: text(s.name, 80).trim() || t("data.untitledSong"),
     bpm: clampInt(s.bpm, MIN_BPM, MAX_BPM, 90),
     sections: sections
       .filter((sec) => sec && typeof sec === "object" && cleanId(sec.patternId))
@@ -65,7 +66,7 @@ export function normalizeCustom(raw) {
   return out;
 }
 
-const P = (id, name, words, bpm, extra = {}) => normalizePattern({ id, name, words, bpm, ...extra });
+const P = (id, name, words, bpm, extra = {}) => normalizePattern({ id, name, words, bpm, ...extra, ...localize("patterns", id) });
 
 /** Common practice patterns and base rhythms (ji). Read-only. */
 export const BUILTIN_PATTERNS = [
@@ -99,7 +100,7 @@ export const BUILTIN_PATTERNS = [
     { drum: "shime", notes: "Single and double hits on the small drum." }),
 ];
 
-const S = (id, name, bpm, sections, notes) => normalizeSong({ id, name, bpm, sections, notes });
+const S = (id, name, bpm, sections, notes) => normalizeSong({ id, name, bpm, sections, notes, ...localize("songs", id) });
 
 /** Example songs built from the common patterns. Read-only. */
 export const BUILTIN_SONGS = [
@@ -186,9 +187,9 @@ const sameSong = (a, b) =>
  */
 export function importData(custom, data) {
   if (!data || typeof data !== "object" || (!Array.isArray(data.patterns) && !Array.isArray(data.songs) && !Array.isArray(data.lessons))) {
-    throw new Error("This isn’t a Taiko Trainer file.");
+    throw new Error(t("data.notOurs"));
   }
-  if (data.app && data.app !== APP_ID) throw new Error("This file is from a different app.");
+  if (data.app && data.app !== APP_ID) throw new Error(t("data.otherApp"));
 
   const patterns = custom.patterns.slice();
   const songs = custom.songs.slice();

@@ -4,6 +4,7 @@
 import { WORDS } from "./words.js";
 import { resolve, chunk } from "./timeline.js";
 import { newId, cleanId, text, clampNum } from "./util.js";
+import { t, quote } from "../i18n.js";
 
 export const MAX_STRIKES = 20000;
 const MAX_TIME = 6 * 3600;
@@ -147,7 +148,7 @@ export function normalizeLesson(l) {
   if (!l || typeof l !== "object") return null;
   return {
     id: cleanId(l.id) || newId("v"),
-    name: text(l.name, 80).trim() || "Untitled video lesson",
+    name: text(l.name, 80).trim() || t("data.untitledLesson"),
     notes: text(l.notes, 500).trim(),
     video: normalizeVideo(l.video),
     strikes: normalizeStrikes(l.strikes),
@@ -155,10 +156,10 @@ export function normalizeLesson(l) {
 }
 
 export function describeVideo(v) {
-  if (!v) return "No video yet";
-  if (v.type === "youtube") return "YouTube video";
-  if (v.type === "url") return "Video link";
-  return v.name ? `Video file “${v.name}”` : "Video file";
+  if (!v) return t("video.none");
+  if (v.type === "youtube") return t("video.youtube");
+  if (v.type === "url") return t("video.link");
+  return v.name ? t("video.fileNamed", { name: quote(v.name) }) : t("video.file");
 }
 
 // ---------- compact strikes for share links ----------

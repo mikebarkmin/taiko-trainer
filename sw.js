@@ -2,7 +2,7 @@
 // to the home screen). Always tries the network first, so updates show up
 // right away when online. Videos and YouTube are never cached here.
 
-const CACHE = "taiko-trainer-v2";
+const CACHE = "taiko-trainer-v3";
 const SHELL = [
     "./",
     "index.html",
@@ -21,6 +21,9 @@ const SHELL = [
     "src/core/util.js",
     "src/core/words.js",
     "src/drum.js",
+    "src/i18n.js",
+    "src/lang/de.js",
+    "src/lang/en.js",
     "src/main.js",
     "src/media.js",
     "src/player.js",
@@ -53,7 +56,7 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET" || req.headers.has("range")) return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== self.location.origin || url.pathname.includes("/__dev/")) return; // dev server's live reload
   event.respondWith(
     fetch(req)
       .then((res) => {

@@ -20,14 +20,19 @@
   <script type="module" src="src/main.js"></script>
 </head>
 <body>
+  <!-- Text comes from src/lang/*.js: data-i18n (text), data-i18n-html (markup), data-i18n-attr (attributes). -->
   <header class="app-bar">
     <div class="app-bar-inner">
       <a class="brand" href="#play"><span class="stamp" aria-hidden="true">太鼓</span><span class="brand-name">Taiko Trainer</span></a>
-      <nav class="tabs" aria-label="Screens">
-        <a href="#play" data-tab="play">Play</a>
-        <a href="#library" data-tab="library">Patterns &amp; songs</a>
-        <a href="#words" data-tab="words">Words</a>
+      <nav class="tabs" data-i18n-attr="aria-label:nav.label">
+        <a href="#play" data-tab="play" data-i18n="nav.play"></a>
+        <a href="#library" data-tab="library" data-i18n="nav.library"></a>
+        <a href="#words" data-tab="words" data-i18n="nav.words"></a>
       </nav>
+      <div class="lang-switch" role="group" id="langSwitch" data-i18n-attr="aria-label:lang.label">
+        <button type="button" data-lang="en" lang="en" aria-label="English">EN</button>
+        <button type="button" data-lang="de" lang="de" aria-label="Deutsch">DE</button>
+      </div>
     </div>
   </header>
 
@@ -35,15 +40,15 @@
     <div class="banner" id="banner" role="status" hidden>
       <p id="bannerText"></p>
       <div class="banner-actions">
-        <button type="button" class="btn small primary" id="bannerAdd">Add to my patterns &amp; songs</button>
-        <button type="button" class="btn small" id="bannerDismiss">Dismiss</button>
+        <button type="button" class="btn small primary" id="bannerAdd" data-i18n="banner.add"></button>
+        <button type="button" class="btn small" id="bannerDismiss" data-i18n="banner.dismiss"></button>
       </div>
     </div>
 
     <!-- ================= PLAY ================= -->
     <main class="view" id="view-play">
       <div class="play-grid">
-        <section class="stage" aria-label="Practice drum">
+        <section class="stage" data-i18n-attr="aria-label:drum.practice">
           <div class="drum-card">
             <div id="playDrum"></div>
             <div class="now" aria-hidden="true">
@@ -51,14 +56,14 @@
               <span class="now-ro" id="nowRo"></span>
             </div>
             <div class="beat-pulse" id="beatPulse" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-            <p class="drum-caption">Tap the drum to try it. Middle = Don / Kon, edge = Ka / Ra.<span class="keys"> Keys: <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd>, <kbd>Space</kbd> to play.</span></p>
+            <p class="drum-caption" data-i18n-html="play.caption"></p>
           </div>
         </section>
 
         <section class="panel" aria-labelledby="playHeading">
-          <h1 class="sr-only" id="playHeading">Play along</h1>
+          <h1 class="sr-only" id="playHeading" data-i18n="play.heading"></h1>
           <div class="field">
-            <label for="itemSelect">What to play</label>
+            <label for="itemSelect" data-i18n="play.what"></label>
             <select id="itemSelect"></select>
             <p class="item-notes" id="itemNotes" hidden></p>
             <p class="meta" id="itemInfo"></p>
@@ -67,76 +72,78 @@
           <div class="mode-beats" id="modeBeats">
           <div class="tempo">
             <div class="tempo-top">
-              <label for="bpmInput" class="lbl">Tempo</label>
+              <label for="bpmInput" class="lbl" data-i18n="play.tempo"></label>
               <div class="tempo-ctrl">
-                <button type="button" class="btn round" id="bpmDown" aria-label="Slower by 5">−</button>
+                <button type="button" class="btn round" id="bpmDown" data-i18n-attr="aria-label:play.slower">−</button>
                 <input type="number" id="bpmInput" min="30" max="240" step="1" inputmode="numeric">
                 <span class="unit">bpm</span>
-                <button type="button" class="btn round" id="bpmUp" aria-label="Faster by 5">+</button>
+                <button type="button" class="btn round" id="bpmUp" data-i18n-attr="aria-label:play.faster">+</button>
               </div>
-              <button type="button" class="btn small ghost" id="bpmReset">Reset</button>
+              <button type="button" class="btn small ghost" id="bpmReset"></button>
             </div>
-            <input type="range" id="bpmRange" min="30" max="240" step="1" aria-label="Tempo">
-            <div class="tempo-scale" aria-hidden="true"><span>30 slow</span><span>240 fast</span></div>
+            <input type="range" id="bpmRange" min="30" max="240" step="1" data-i18n-attr="aria-label:play.tempo">
+            <div class="tempo-scale" aria-hidden="true"><span data-i18n="play.slow"></span><span data-i18n="play.fast"></span></div>
             <p class="hint" id="tempoHint" hidden></p>
           </div>
 
           <div class="options">
-            <label class="check" for="optCountIn"><input type="checkbox" id="optCountIn"> Count in 1-2-3-4</label>
-            <label class="check" for="optLoop"><input type="checkbox" id="optLoop"> Repeat</label>
-            <label class="check" for="optGuide"><input type="checkbox" id="optGuide"> Guide drum sound</label>
-            <label class="check" for="optClick"><input type="checkbox" id="optClick"> Metronome click</label>
-            <label class="check" for="optSpeak"><input type="checkbox" id="optSpeak"> Say the shouts</label>
+            <label class="check" for="optCountIn"><input type="checkbox" id="optCountIn"> <span data-i18n="opt.countIn"></span></label>
+            <label class="check" for="optLoop"><input type="checkbox" id="optLoop"> <span data-i18n="opt.loop"></span></label>
+            <label class="check" for="optGuide"><input type="checkbox" id="optGuide"> <span data-i18n="opt.guide"></span></label>
+            <label class="check" for="optClick"><input type="checkbox" id="optClick"> <span data-i18n="opt.click"></span></label>
+            <label class="check" for="optSpeak"><input type="checkbox" id="optSpeak"> <span data-i18n="opt.speak"></span></label>
           </div>
+          <p class="hint voice-hint" id="voiceHint" data-i18n="voice.missing" hidden></p>
 
           <div class="transport">
             <button type="button" class="btn primary big" id="playBtn"></button>
             <p class="status" id="playStatus" aria-live="polite"></p>
           </div>
 
-          <div class="sheet" id="sheet" aria-label="The rhythm, in words"></div>
-          <p class="hint">Say the words out loud while you play. That’s how taiko players learn. Turn off the guide drum once you know the rhythm, and keep only the click.</p>
+          <div class="sheet" id="sheet" data-i18n-attr="aria-label:play.sheet"></div>
+          <p class="hint" data-i18n="play.sayHint"></p>
           </div>
 
           <div class="mode-video" id="modeVideo" hidden>
             <div class="media-host" id="pvMedia"></div>
             <div class="notice" id="pvNote" hidden></div>
-            <label class="btn small primary" for="pvFile" id="pvFileLabel" hidden>Choose the video file</label>
+            <label class="btn small primary" for="pvFile" id="pvFileLabel" data-i18n="pv.chooseFile" hidden></label>
             <input type="file" id="pvFile" accept="video/*" class="sr-only">
 
             <div class="transport">
-              <button type="button" class="btn primary big" id="pvPlay">Play</button>
+              <button type="button" class="btn primary big" id="pvPlay" data-i18n="btn.play"></button>
               <p class="status" id="pvStatus" aria-live="off"></p>
             </div>
 
             <div class="video-opts">
-              <label class="mini" for="pvSpeed">Speed
+              <label class="mini" for="pvSpeed"><span data-i18n="pv.speed"></span>
                 <select id="pvSpeed">
                   <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="0.75">0.75×</option>
-                  <option value="1">1× (normal)</option><option value="1.25">1.25×</option>
+                  <option value="1" data-i18n="pv.normal"></option><option value="1.25">1.25×</option>
                 </select>
               </label>
-              <label class="check" for="pvLoop"><input type="checkbox" id="pvLoop"> Repeat</label>
-              <label class="check" for="pvSound"><input type="checkbox" id="pvSound"> Video sound</label>
-              <label class="check" for="pvGuide"><input type="checkbox" id="pvGuide"> Guide drum sound</label>
-              <label class="check" for="pvSpeak"><input type="checkbox" id="pvSpeak"> Say the shouts</label>
+              <label class="check" for="pvLoop"><input type="checkbox" id="pvLoop"> <span data-i18n="opt.loop"></span></label>
+              <label class="check" for="pvSound"><input type="checkbox" id="pvSound"> <span data-i18n="pv.sound"></span></label>
+              <label class="check" for="pvGuide"><input type="checkbox" id="pvGuide"> <span data-i18n="opt.guide"></span></label>
+              <label class="check" for="pvSpeak"><input type="checkbox" id="pvSpeak"> <span data-i18n="opt.speak"></span></label>
             </div>
+            <p class="hint voice-hint" id="pvVoiceHint" data-i18n="voice.missing" hidden></p>
 
             <fieldset class="part">
-              <legend>Practice one part</legend>
+              <legend data-i18n="pv.part"></legend>
               <div class="row">
-                <div class="field tiny"><label for="pvFrom">From</label><input id="pvFrom" type="text" inputmode="decimal" placeholder="0:00.0"></div>
-                <button type="button" class="btn small" id="pvFromNow">Now</button>
-                <div class="field tiny"><label for="pvTo">To</label><input id="pvTo" type="text" inputmode="decimal" placeholder="end"></div>
-                <button type="button" class="btn small" id="pvToNow">Now</button>
-                <button type="button" class="btn small ghost" id="pvClearPart">Whole video</button>
+                <div class="field tiny"><label for="pvFrom" data-i18n="pv.from"></label><input id="pvFrom" type="text" inputmode="decimal" placeholder="0:00.0"></div>
+                <button type="button" class="btn small" id="pvFromNow" data-i18n="pv.now"></button>
+                <div class="field tiny"><label for="pvTo" data-i18n="pv.to"></label><input id="pvTo" type="text" inputmode="decimal" data-i18n-attr="placeholder:pv.end"></div>
+                <button type="button" class="btn small" id="pvToNow" data-i18n="pv.now"></button>
+                <button type="button" class="btn small ghost" id="pvClearPart" data-i18n="pv.whole"></button>
               </div>
-              <p class="hint">With Repeat on, the part plays over and over. Slow it down with Speed until it feels easy.</p>
+              <p class="hint" data-i18n="pv.partHint"></p>
             </fieldset>
 
             <div class="lane-box">
               <div id="pvLane"></div>
-              <p class="hint">The timeline follows the video. Tap it to jump. <a href="#library" id="pvEdit">Edit strikes</a></p>
+              <p class="hint"><span data-i18n="pv.laneHint"></span> <a href="#library" id="pvEdit" data-i18n="btn.editStrikes"></a></p>
             </div>
           </div>
         </section>
@@ -147,40 +154,40 @@
     <main class="view" id="view-library" hidden>
       <div class="lib-grid">
         <section class="lib-lists" aria-labelledby="libHeading">
-          <h1 class="sr-only" id="libHeading">Patterns and songs</h1>
+          <h1 class="sr-only" id="libHeading" data-i18n="lib.heading"></h1>
           <div class="notice" id="libMsg" role="status" hidden></div>
 
           <div class="lib-head">
-            <h2>Patterns</h2>
-            <button type="button" class="btn primary small" id="newPattern">New pattern</button>
+            <h2 data-i18n="lib.patterns"></h2>
+            <button type="button" class="btn primary small" id="newPattern" data-i18n="lib.newPattern"></button>
           </div>
           <ul class="items" id="patternList"></ul>
 
           <div class="lib-head">
-            <h2>Songs</h2>
-            <button type="button" class="btn primary small" id="newSong">New song</button>
+            <h2 data-i18n="lib.songs"></h2>
+            <button type="button" class="btn primary small" id="newSong" data-i18n="lib.newSong"></button>
           </div>
           <ul class="items" id="songList"></ul>
 
           <div class="lib-head">
-            <h2>Video lessons</h2>
-            <button type="button" class="btn primary small" id="newLesson">New video lesson</button>
+            <h2 data-i18n="lib.lessons"></h2>
+            <button type="button" class="btn primary small" id="newLesson" data-i18n="lib.newLesson"></button>
           </div>
           <ul class="items" id="lessonList"></ul>
 
           <div class="io">
-            <h2>Move to another device</h2>
-            <p class="hint">Everything is saved in this browser, videos included. Share makes a link for one item. Export saves all patterns, songs and lessons in one file (without videos); Download on a lesson saves it together with its video. Import adds either kind of file.</p>
+            <h2 data-i18n="lib.move"></h2>
+            <p class="hint" data-i18n="lib.moveHint"></p>
             <div class="io-btns">
-              <button type="button" class="btn small" id="exportBtn">Export everything</button>
-              <label class="btn small" for="importFile">Import a file</label>
+              <button type="button" class="btn small" id="exportBtn" data-i18n="lib.export"></button>
+              <label class="btn small" for="importFile" data-i18n="lib.import"></label>
               <input type="file" id="importFile" class="sr-only">
             </div>
             <p class="hint" id="storageInfo"></p>
           </div>
         </section>
 
-        <section class="editor" id="editor" aria-label="Editor"></section>
+        <section class="editor" id="editor" data-i18n-attr="aria-label:lib.editor"></section>
       </div>
     </main>
 
@@ -190,15 +197,17 @@
     <!-- ================= WORDS ================= -->
     <main class="view" id="view-words" hidden>
       <div class="words-grid">
-        <aside class="stage" aria-label="Practice drum">
+        <aside class="stage" data-i18n-attr="aria-label:drum.practice">
           <div class="drum-card">
             <div id="wordsDrum"></div>
             <div class="legend" aria-hidden="true">
-              <span><i class="mk"></i>skin (kawa)</span>
-              <span><i class="mk rim"></i>rim (fuchi)</span>
-              <span><i class="mk soft"></i>soft</span>
-              <span><i class="mk rest"></i>rest</span>
-              <span><i class="mk shout"></i>shout</span>
+              <span><i class="mk R"></i><span data-i18n="legend.right"></span></span>
+              <span><i class="mk L"></i><span data-i18n="legend.left"></span></span>
+              <span><i class="mk plain"></i><span data-i18n="legend.skin"></span></span>
+              <span><i class="mk plain rim"></i><span data-i18n="legend.rim"></span></span>
+              <span><i class="mk plain soft"></i><span data-i18n="legend.soft"></span></span>
+              <span><i class="mk rest"></i><span data-i18n="legend.rest"></span></span>
+              <span><i class="mk shout"></i><span data-i18n="legend.shout"></span></span>
             </div>
           </div>
           <div class="detail" aria-live="polite">
@@ -206,8 +215,8 @@
               <span class="d-kana" id="dKana" lang="ja"></span>
               <span class="d-ro" id="dRo"></span>
               <span class="d-actions">
-                <button class="btn small" type="button" id="dSay">Say it</button>
-                <button class="btn small primary" type="button" id="dPlay">Play</button>
+                <button class="btn small" type="button" id="dSay" data-i18n="words.say"></button>
+                <button class="btn small primary" type="button" id="dPlay" data-i18n="btn.play"></button>
               </span>
             </div>
             <p class="d-mean" id="dMean"></p>
@@ -219,41 +228,41 @@
 
         <div class="words-content">
           <header class="words-intro">
-            <p class="eyebrow">Kuchi shōga · 口唱歌 · “mouth song”</p>
-            <h1>The drum words</h1>
-            <p class="lead">Taiko players learn every rhythm by saying it out loud first. Each word is an instruction: which hand, where to hit, how big, and for how long. Tap any word to see it on the drum and hear it.</p>
-            <p class="hint">These are the words most groups share. Groups differ a little, so if a teacher says it another way, follow the teacher.</p>
+            <p class="eyebrow" data-i18n="words.eyebrow"></p>
+            <h1 data-i18n="words.title"></h1>
+            <p class="lead" data-i18n="words.lead"></p>
+            <p class="hint" data-i18n="words.groupsDiffer"></p>
           </header>
 
           <section aria-labelledby="known-h">
-            <h2 id="known-h">The four words you already know</h2>
+            <h2 id="known-h" data-i18n="words.knownH"></h2>
             <div class="known" id="known"></div>
           </section>
 
           <section aria-labelledby="grid-h">
-            <h2 id="grid-h">Which hand, how big</h2>
-            <p class="hint">Almost every drum word fits this grid. Bigger hits use more of the arm. Two short words joined together make a pair, and the right hand usually goes first.</p>
+            <h2 id="grid-h" data-i18n="words.gridH"></h2>
+            <p class="hint" data-i18n="words.gridHint"></p>
             <div class="grid-wrap"><div class="hand-grid" id="handGrid"></div></div>
           </section>
 
           <section aria-labelledby="all-h">
-            <h2 id="all-h">All the words</h2>
-            <p class="hint">Each card shows one beat split into two halves. A dot is a hit: <b>R</b> or <b>L</b> is the hand, a bigger dot is a bigger hit, round is the skin and square is the rim. A tail means “let it ring”.</p>
+            <h2 id="all-h"></h2>
+            <p class="hint" data-i18n-html="words.allHint"></p>
             <div class="groups" id="wordGroups"></div>
           </section>
 
           <section aria-labelledby="marks-h">
-            <h2 id="marks-h">Small marks that change a word</h2>
+            <h2 id="marks-h" data-i18n="words.marksH"></h2>
             <div class="marks">
-              <div class="mark"><span class="glyph" lang="ja">ン</span><div><h3>Ends in n: let it ring</h3><p><span lang="ja">ドン</span> Don rings out. <span lang="ja">ド</span> Do is short.</p></div></div>
-              <div class="mark"><span class="glyph" lang="ja">ッ</span><div><h3>Small tsu: stop it short</h3><p><span lang="ja">カッ</span> Kat is a Ka that stops sharply.</p></div></div>
-              <div class="mark"><span class="glyph" lang="ja">ー</span><div><h3>Long mark: hold it longer</h3><p><span lang="ja">ドーン</span> Dōn is a Don that rings for longer.</p></div></div>
-              <div class="mark"><span class="glyph" lang="ja">間</span><div><h3>Ma: the space between</h3><p>Silence is part of the music. Count rests as carefully as hits.</p></div></div>
+              <div class="mark"><span class="glyph" lang="ja">ン</span><div><h3 data-i18n="mark.n.h"></h3><p data-i18n-html="mark.n.p"></p></div></div>
+              <div class="mark"><span class="glyph" lang="ja">ッ</span><div><h3 data-i18n="mark.tsu.h"></h3><p data-i18n-html="mark.tsu.p"></p></div></div>
+              <div class="mark"><span class="glyph" lang="ja">ー</span><div><h3 data-i18n="mark.long.h"></h3><p data-i18n-html="mark.long.p"></p></div></div>
+              <div class="mark"><span class="glyph" lang="ja">間</span><div><h3 data-i18n="mark.ma.h"></h3><p data-i18n="mark.ma.p"></p></div></div>
             </div>
           </section>
 
           <section aria-labelledby="gloss-h">
-            <h2 id="gloss-h">Words you’ll hear in class</h2>
+            <h2 id="gloss-h" data-i18n="words.glossH"></h2>
             <dl class="gloss" id="glossary"></dl>
           </section>
         </div>
@@ -261,7 +270,7 @@
     </main>
 
     <footer class="foot">
-      <p>Taiko Trainer runs entirely in your browser and saves to this device; nothing is uploaded. Sounds are made by the browser, so they only hint at a real drum.</p>
+      <p data-i18n="footer"></p>
     </footer>
   </div>
 </body>

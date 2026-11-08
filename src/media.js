@@ -4,6 +4,8 @@
 // rate, play(), pause(),
 // seek(t), setRate(r), setMuted(m), destroy(); `onState()` fires on changes.
 
+import { t } from "./i18n.js";
+
 /** A player for a file Blob or a direct URL. */
 export function html5Media(host, src, { onState = () => {} } = {}) {
   const wrap = document.createElement("div");
@@ -26,7 +28,7 @@ export function html5Media(host, src, { onState = () => {} } = {}) {
   const ready = new Promise((resolve, reject) => {
     if (v.readyState >= 1) resolve();
     v.addEventListener("loadedmetadata", () => resolve(), { once: true });
-    v.addEventListener("error", () => reject(new Error("This video can’t be played in this browser.")), { once: true });
+    v.addEventListener("error", () => reject(new Error(t("video.cantPlay"))), { once: true });
   });
 
   return {
@@ -61,7 +63,7 @@ function loadYouTube() {
   if (globalThis.YT?.Player) return Promise.resolve(globalThis.YT);
   if (!ytPromise) {
     ytPromise = new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("YouTube didn’t load. Check the internet connection.")), 15000);
+      const timer = setTimeout(() => reject(new Error(t("video.ytNoLoad"))), 15000);
       const prev = globalThis.onYouTubeIframeAPIReady;
       globalThis.onYouTubeIframeAPIReady = () => {
         clearTimeout(timer);
@@ -70,7 +72,7 @@ function loadYouTube() {
       };
       const s = document.createElement("script");
       s.src = "https://www.youtube.com/iframe_api";
-      s.onerror = () => { clearTimeout(timer); reject(new Error("YouTube couldn’t be reached.")); };
+      s.onerror = () => { clearTimeout(timer); reject(new Error(t("video.ytUnreachable"))); };
       document.head.append(s);
     });
     ytPromise.catch(() => { ytPromise = null; });
@@ -103,7 +105,7 @@ export function youtubeMedia(host, videoId, { onState = () => {} } = {}) {
         onReady: () => resolve(),
         onStateChange: (e) => { state = e.data; onState("state"); },
         onPlaybackRateChange: () => onState("ratechange"),
-        onError: () => reject(new Error("This YouTube video can’t be played here. It may be private or not allow embedding.")),
+        onError: () => reject(new Error(t("video.ytCantEmbed"))),
       },
     });
   }));

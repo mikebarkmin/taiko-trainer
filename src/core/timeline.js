@@ -2,6 +2,7 @@
 // Pure module: no DOM, no audio.
 
 import { WORDS, parseWords, beatsOf } from "./words.js";
+import { t, quote } from "../i18n.js";
 
 export const MIN_BPM = 30;
 export const MAX_BPM = 240;
@@ -28,11 +29,11 @@ export function resolve(kind, item, library) {
 
   if (kind === "pattern") {
     const c = compile(item);
-    if (c.unknown.length) out.problems.push(`Unknown words: ${c.unknown.join(", ")}`);
+    if (c.unknown.length) out.problems.push(t("data.unknownWords", { words: c.unknown.join(", ") }));
     if (c.ids.length) {
       out.sections.push({ index: 0, name: item.name, patternId: item.id, pattern: item, ...c, repeats: 1, bpm: item.bpm });
     } else {
-      out.problems.push("This pattern has no words yet.");
+      out.problems.push(t("data.patternEmpty"));
     }
     return out;
   }
@@ -40,12 +41,12 @@ export function resolve(kind, item, library) {
   (item.sections || []).forEach((sec, i) => {
     const pattern = library.pattern(sec.patternId);
     if (!pattern) {
-      out.problems.push(`Section ${i + 1}: the pattern was deleted, so it is skipped.`);
+      out.problems.push(t("data.sectionDeleted", { i: i + 1 }));
       return;
     }
     const c = compile(pattern);
     if (!c.ids.length) {
-      out.problems.push(`Section ${i + 1}: “${pattern.name}” has no words, so it is skipped.`);
+      out.problems.push(t("data.sectionEmpty", { i: i + 1, name: quote(pattern.name) }));
       return;
     }
     out.sections.push({
@@ -53,7 +54,7 @@ export function resolve(kind, item, library) {
       repeats: sec.repeats, bpm: sec.bpm || item.bpm,
     });
   });
-  if (!out.sections.length && !out.problems.length) out.problems.push("This song has no sections yet.");
+  if (!out.sections.length && !out.problems.length) out.problems.push(t("data.songEmpty"));
   return out;
 }
 

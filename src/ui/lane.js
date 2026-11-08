@@ -6,10 +6,11 @@ import { WORDS } from "../core/words.js";
 import { strikeWord, lowerBound } from "../core/lessons.js";
 import { fmtClock } from "../core/util.js";
 import { esc } from "./render.js";
+import { t } from "../i18n.js";
 
 export function createLane(host, { editable = false, onSeek, onSelect, zoom: startZoom = 150 } = {}) {
   host.innerHTML = `<div class="lane${editable ? " editable" : ""}">
-    <div class="lane-labels" aria-hidden="true"><span>Shout</span><span>Rim</span><span>Skin</span></div>
+    <div class="lane-labels" aria-hidden="true"><span>${esc(t("lane.shout"))}</span><span>${esc(t("lane.rim"))}</span><span>${esc(t("lane.skin"))}</span></div>
     <div class="lane-scroll"${editable ? "" : ' aria-hidden="true"'}>
       <div class="lane-inner">
         <div class="lane-range" hidden></div>
@@ -77,8 +78,8 @@ export function createLane(host, { editable = false, onSeek, onSelect, zoom: sta
       const s = strikes[i];
       const w = WORDS[strikeWord(s)];
       const row = s.shout ? "shout" : s.where;
-      const cls = `stk ${row}${s.shout ? "" : ` ${s.vol}`}${i === selected ? " sel" : ""}${i === current ? " cur" : ""}`;
-      const label = editable ? ` type="button" aria-label="${esc(w.ro)} at ${fmtClock(s.t, 2)}"` : "";
+      const cls = `stk ${row}${s.shout ? "" : ` ${s.vol} ${s.hand}`}${i === selected ? " sel" : ""}${i === current ? " cur" : ""}`;
+      const label = editable ? ` type="button" aria-label="${esc(t("lane.at", { word: w.ro, time: fmtClock(s.t, 2) }))}"` : "";
       mh += `<${tag} class="${cls}" data-i="${i}" style="left:${(s.t * zoom).toFixed(1)}px"${label}>${s.shout ? "!" : s.hand}${
         showKana ? `<i lang="ja">${w.kana}</i>` : ""}</${tag}>`;
     }

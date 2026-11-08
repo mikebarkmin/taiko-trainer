@@ -10,6 +10,7 @@ import { VideoSync } from "../videosync.js";
 import { speak } from "../audio.js";
 import { createLane } from "./lane.js";
 import { $, esc } from "./render.js";
+import { t, quote } from "../i18n.js";
 
 const sourceKey = (l) => (l?.video ? `${l.id}|${JSON.stringify(l.video)}` : "");
 
@@ -39,9 +40,9 @@ export function createLessonPlayer(app, { drum, setNow }) {
       setNow(w.kana, w.ro);
       drum.setWord(w.kana);
     },
-    onShout: (s) => {
+    onShout: (s, voiced) => {
       drum.shout(s.shout);
-      if (S.speak) speak(s.shout);
+      if (S.speak && !voiced) speak(s.shout);
     },
   };
 
@@ -73,8 +74,8 @@ export function createLessonPlayer(app, { drum, setNow }) {
     note("");
     const v = lesson.video;
     if (!v) {
-      els.host.innerHTML = `<div class="video-empty">This lesson has no video yet</div>`;
-      note(`Open the editor to add a video and mark the strikes.`);
+      els.host.innerHTML = `<div class="video-empty">${esc(t("pv.noVideo"))}</div>`;
+      note(esc(t("pv.openEditor")));
       return;
     }
     let src = blobOverride || null;
@@ -82,13 +83,13 @@ export function createLessonPlayer(app, { drum, setNow }) {
       src = await getVideo(lesson.id);
       if (my !== token) return;
       if (!src) {
-        els.host.innerHTML = `<div class="video-empty">The video isn’t on this device</div>`;
-        note(`This lesson uses the video file “${esc(v.name || "video")}”. Choose that file to play along.`);
+        els.host.innerHTML = `<div class="video-empty">${esc(t("pv.notHere"))}</div>`;
+        note(esc(t("pv.useFile", { name: quote(v.name || "video") })));
         els.fileLabel.hidden = false;
         return;
       }
     }
-    els.host.innerHTML = `<div class="video-empty">Loading video…</div>`;
+    els.host.innerHTML = `<div class="video-empty">${esc(t("pv.loading"))}</div>`;
     try {
       const onState = () => renderButton();
       media = v.type === "youtube" ? youtubeMedia(els.host, v.videoId, { onState }) : html5Media(els.host, src || v.url, { onState });
@@ -99,17 +100,18 @@ export function createLessonPlayer(app, { drum, setNow }) {
       lane.setDuration(media.duration || v.duration || 0);
       sync.attach(media, lesson.strikes, {
         guide: () => S.videoGuide,
+        speak: () => S.speak,
         loop: () => S.loop,
         range: () => range,
       }, handlers);
-      if (v.type === "youtube") note("If Play doesn’t start the video, tap the video itself once.");
-      if (!lesson.strikes.length) note("No strikes marked yet. Open the editor to add them.");
+      if (v.type === "youtube") note(esc(t("pv.ytTap")));
+      if (!lesson.strikes.length) note(esc(t("pv.noStrikes")));
       renderButton();
       if (active) startLoop();
     } catch (err) {
       if (my !== token) return;
       media = null;
-      els.host.innerHTML = `<div class="video-empty err">${esc(err.message || "The video couldn’t be loaded.")}</div>`;
+      els.host.innerHTML = `<div class="video-empty err">${esc(err.message || t("pv.cantLoad"))}</div>`;
     }
   }
 
@@ -124,8 +126,8 @@ export function createLessonPlayer(app, { drum, setNow }) {
   function renderButton() {
     const playing = media && !media.paused;
     els.play.innerHTML = playing
-      ? `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1" width="2.5" height="8"></rect><rect x="6" y="1" width="2.5" height="8"></rect></svg>Pause`
-      : `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 .5 9.5 5 1 9.5z"></path></svg>Play`;
+      ? `<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1" width="2.5" height="8"></rect><rect x="6" y="1" width="2.5" height="8"></rect></svg>${t("btn.pause")}`
+      : `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 .5 9.5 5 1 9.5z"></path></svg>${t("btn.play")}`;
     els.play.classList.toggle("is-playing", !!playing);
     els.play.disabled = !media;
   }
@@ -153,9 +155,9 @@ export function createLessonPlayer(app, { drum, setNow }) {
     cancelAnimationFrame(raf);
     const frame = () => {
       if (media) {
-        const t = media.time;
-        lane.setTime(t, !media.paused);
-        els.status.textContent = `${fmtClock(t, 1)} / ${fmtClock(media.duration || lesson?.video?.duration || 0, 1)}${S.videoRate !== 1 ? ` · ${S.videoRate}× speed` : ""}`;
+        const at = media.time;
+        lane.setTime(at, !media.paused);
+        els.status.textContent = `${fmtClock(at, 1)} / ${fmtClock(media.duration || lesson?.video?.duration || 0, 1)}${S.videoRate !== 1 ? ` · ${t("pv.speedNote", { rate: S.videoRate })}` : ""}`;
       }
       raf = requestAnimationFrame(frame);
     };
@@ -168,7 +170,7 @@ export function createLessonPlayer(app, { drum, setNow }) {
     if (media.paused) {
       if (range && (media.time < range.start || media.time >= range.end - 0.05)) media.seek(range.start);
       const p = media.play();
-      p?.catch?.(() => note("The browser blocked playing. Tap the video itself to start it.", true));
+      p?.catch?.(() => note(esc(t("pv.blocked")), true));
     } else {
       media.pause();
     }
@@ -198,8 +200,8 @@ export function createLessonPlayer(app, { drum, setNow }) {
     const v = lesson.video;
     const stored = await putVideo(lesson.id, f);
     mount(f);
-    if (v?.size && v.size !== f.size) note("This file isn’t the same size as the original, so the strikes may not line up.", true);
-    else if (!stored) note("This browser wouldn’t save the video, so it plays only until you close the page.", true);
+    if (v?.size && v.size !== f.size) note(esc(t("pv.sizeDiffers")), true);
+    else if (!stored) note(esc(t("pv.notStored")), true);
   });
 
   return {

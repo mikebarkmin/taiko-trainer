@@ -1,6 +1,8 @@
 // Kuchi shōga: the spoken drum words, and how to turn text into words.
 // Pure module: no DOM, so it runs in the browser and in Node tests.
 
+import { localize } from "../i18n.js";
+
 const R = (t, where, vol, ring) => ({ t, hand: "R", where, vol, ring });
 const L = (t, where, vol, ring) => ({ t, hand: "L", where, vol, ring });
 
@@ -72,6 +74,7 @@ export const WORDS = {
 for (const w of Object.values(WORDS)) {
   if (w.group === "shout") { w.size = "Loud, from the belly"; w.len = "1 beat"; w.tip = SHOUT_TIP; }
 }
+for (const [id, w] of Object.entries(WORDS)) Object.assign(w, localize("words", id));
 
 export const GROUPS = [
   { id: "head", mark: "", title: "On the skin", jp: "皮 · kawa", desc: "The booming sounds. Hit the middle of the drum head." },
@@ -79,7 +82,7 @@ export const GROUPS = [
   { id: "silence", mark: "rest", title: "Silence", jp: "間 · ma", desc: "Rests count as much as hits. Japanese musicians call the space between sounds ma." },
   { id: "shout", mark: "shout", title: "Shouts", jp: "掛け声 · kakegoe", desc: "Players shout during rests to stay together and share energy. Most shouts aren’t real words." },
   { id: "shime", mark: "", title: "Small drum", jp: "締太鼓 · shime-daiko", desc: "The small, tightly tied drum sounds high and sharp. It has its own words, and uses Tsu and Tsuku too." },
-];
+].map((g) => ({ ...g, ...localize("groups", g.id) }));
 
 /** Which hand, how big: the grid most words fit into. */
 export const HAND_GRID = [
@@ -87,7 +90,7 @@ export const HAND_GRID = [
   { label: "Medium hit", sub: "from the elbow", R: "do", L: "ko", pair: "doko" },
   { label: "Small tap", sub: "just the wrist", R: "tsu", L: "ku", pair: "tsuku" },
   { label: "Rim click", sub: "on the edge", R: "ka", L: "ra", pair: "kara" },
-];
+].map((r) => ({ ...r, ...localize("handGrid", r.R) }));
 
 /** Order of the word buttons in editors, with "|" as a line break. */
 export const PALETTE = ["don", "kon", "do", "ko", "doko", "tsu", "ku", "tsuku", "|", "ka", "ra", "kara", "su", "sa", "|", "sore", "yoisho", "ha", "yo", "ho", "iya", "|", "ten", "teke"];
