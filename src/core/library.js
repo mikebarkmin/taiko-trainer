@@ -1,30 +1,15 @@
-// Patterns and songs: the built-in ones, validation of saved or imported
-// ones, and sharing. Pure module: no DOM, no storage.
+// Patterns, songs and video lessons: the built-in ones, validation of
+// saved or imported ones, and what goes into files and share links.
+// Pure module: no DOM, no storage.
 
 import { MIN_BPM, MAX_BPM } from "./timeline.js";
+import { newId, cleanId, text, clampInt } from "./util.js";
+import { normalizeLesson } from "./lessons.js";
+
+export { newId };
 
 export const APP_ID = "taiko-trainer";
 export const FORMAT_VERSION = 1;
-
-const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
-
-export function newId(prefix) {
-  const rand = Math.random().toString(36).slice(2, 10);
-  return `${prefix}-${Date.now().toString(36)}-${rand}`;
-}
-
-function text(v, max) {
-  return typeof v === "string" ? v.slice(0, max) : "";
-}
-
-function clampInt(v, min, max, fallback) {
-  const n = Math.round(Number(v));
-  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
-}
-
-function cleanId(v) {
-  return typeof v === "string" && ID_RE.test(v) ? v : "";
-}
 
 /** A pattern with every field present and in range, or null. */
 export function normalizePattern(p) {
@@ -62,7 +47,7 @@ export function normalizeSong(s) {
 
 /** Saved data from storage, cleaned up. Never throws. */
 export function normalizeCustom(raw) {
-  const out = { patterns: [], songs: [] };
+  const out = { patterns: [], songs: [], lessons: [] };
   if (!raw || typeof raw !== "object") return out;
   const seen = new Set(BUILTIN_PATTERNS.map((p) => p.id).concat(BUILTIN_SONGS.map((s) => s.id)));
   for (const p of Array.isArray(raw.patterns) ? raw.patterns : []) {
@@ -72,6 +57,10 @@ export function normalizeCustom(raw) {
   for (const s of Array.isArray(raw.songs) ? raw.songs : []) {
     const n = normalizeSong(s);
     if (n && !seen.has(n.id)) { seen.add(n.id); out.songs.push(n); }
+  }
+  for (const l of Array.isArray(raw.lessons) ? raw.lessons : []) {
+    const n = normalizeLesson(l);
+    if (n && !seen.has(n.id)) { seen.add(n.id); out.lessons.push(n); }
   }
   return out;
 }
@@ -140,14 +129,20 @@ export function isBuiltin(id) {
 export function makeLibrary(custom) {
   const patterns = BUILTIN_PATTERNS.map((p) => ({ ...p, builtin: true })).concat(custom.patterns);
   const songs = BUILTIN_SONGS.map((s) => ({ ...s, builtin: true })).concat(custom.songs);
-  const pmap = new Map(patterns.map((p) => [p.id, p]));
-  const smap = new Map(songs.map((s) => [s.id, s]));
+  const lessons = custom.lessons || [];
+  const maps = {
+    pattern: new Map(patterns.map((p) => [p.id, p])),
+    song: new Map(songs.map((s) => [s.id, s])),
+    lesson: new Map(lessons.map((l) => [l.id, l])),
+  };
   return {
     patterns,
     songs,
-    pattern: (id) => pmap.get(id) || null,
-    song: (id) => smap.get(id) || null,
-    get: (kind, id) => (kind === "song" ? smap.get(id) : pmap.get(id)) || null,
+    lessons,
+    pattern: (id) => maps.pattern.get(id) || null,
+    song: (id) => maps.song.get(id) || null,
+    lesson: (id) => maps.lesson.get(id) || null,
+    get: (kind, id) => maps[kind]?.get(id) || null,
     songsUsing: (patternId) => songs.filter((s) => s.sections.some((sec) => sec.patternId === patternId)),
   };
 }
@@ -159,19 +154,27 @@ function plain(item) {
 
 /** Everything the user made, as a file-ready object. */
 export function exportData(custom) {
-  return { app: APP_ID, version: FORMAT_VERSION, patterns: custom.patterns.map(plain), songs: custom.songs.map(plain) };
+  return {
+    app: APP_ID, version: FORMAT_VERSION,
+    patterns: custom.patterns.map(plain), songs: custom.songs.map(plain), lessons: (custom.lessons || []).map(plain),
+  };
 }
 
 /** What to put in a share link for one pattern or song. */
 export function shareData(kind, item, library) {
-  if (kind === "pattern") return { app: APP_ID, version: FORMAT_VERSION, patterns: [plain(item)], songs: [] };
+  const base = { app: APP_ID, version: FORMAT_VERSION, patterns: [], songs: [], lessons: [] };
+  if (kind === "pattern") return { ...base, patterns: [plain(item)] };
+  if (kind === "lesson") return { ...base, lessons: [plain(item)] };
   const ids = [...new Set(item.sections.map((s) => s.patternId))];
   const patterns = ids.map((id) => library.pattern(id)).filter((p) => p && !p.builtin).map(plain);
-  return { app: APP_ID, version: FORMAT_VERSION, patterns, songs: [plain(item)] };
+  return { ...base, patterns, songs: [plain(item)] };
 }
 
 const samePattern = (a, b) =>
   a.name === b.name && a.words === b.words && a.bpm === b.bpm && a.swing === b.swing && a.drum === b.drum && a.notes === b.notes;
+
+const sameLesson = (a, b) =>
+  a.name === b.name && a.notes === b.notes && JSON.stringify(a.video) === JSON.stringify(b.video) && JSON.stringify(a.strikes) === JSON.stringify(b.strikes);
 
 const sameSong = (a, b) =>
   a.name === b.name && a.bpm === b.bpm && a.notes === b.notes && JSON.stringify(a.sections) === JSON.stringify(b.sections);
@@ -182,16 +185,18 @@ const sameSong = (a, b) =>
  * pointed at the renamed patterns. Throws for data that isn't ours.
  */
 export function importData(custom, data) {
-  if (!data || typeof data !== "object" || (!Array.isArray(data.patterns) && !Array.isArray(data.songs))) {
+  if (!data || typeof data !== "object" || (!Array.isArray(data.patterns) && !Array.isArray(data.songs) && !Array.isArray(data.lessons))) {
     throw new Error("This isn’t a Taiko Trainer file.");
   }
   if (data.app && data.app !== APP_ID) throw new Error("This file is from a different app.");
 
   const patterns = custom.patterns.slice();
   const songs = custom.songs.slice();
+  const lessons = (custom.lessons || []).slice();
   const remap = new Map();
-  const added = { patterns: [], songs: [] };
-  const taken = (id) => BUILTIN_IDS.has(id) || patterns.some((p) => p.id === id) || songs.some((s) => s.id === id);
+  const lessonIds = new Map(); // id in the data → id it got here
+  const added = { patterns: [], songs: [], lessons: [] };
+  const taken = (id) => BUILTIN_IDS.has(id) || patterns.some((p) => p.id === id) || songs.some((s) => s.id === id) || lessons.some((l) => l.id === id);
 
   for (const raw of Array.isArray(data.patterns) ? data.patterns : []) {
     const p = normalizePattern(raw);
@@ -217,22 +222,17 @@ export function importData(custom, data) {
     added.songs.push(s);
   }
 
-  return { custom: { patterns, songs }, added };
-}
+  for (const raw of Array.isArray(data.lessons) ? data.lessons : []) {
+    const l = normalizeLesson(raw);
+    if (!l || BUILTIN_IDS.has(l.id)) continue;
+    const originalId = l.id;
+    const existing = lessons.find((x) => x.id === originalId);
+    if (existing && sameLesson(existing, l)) { lessonIds.set(originalId, originalId); continue; }
+    if (taken(l.id)) l.id = newId("v");
+    lessonIds.set(originalId, l.id);
+    lessons.push(l);
+    added.lessons.push(l);
+  }
 
-/** Data → URL-safe text for a share link. */
-export function encodeShare(data) {
-  const bytes = new TextEncoder().encode(JSON.stringify(data));
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-/** URL-safe text from a share link → data. Throws if it's damaged. */
-export function decodeShare(code) {
-  const b64 = String(code).replace(/-/g, "+").replace(/_/g, "/");
-  const padded = b64 + "===".slice((b64.length + 3) % 4);
-  const bin = atob(padded);
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  return JSON.parse(new TextDecoder().decode(bytes));
+  return { custom: { patterns, songs, lessons }, added, lessonIds };
 }

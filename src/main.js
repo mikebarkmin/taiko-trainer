@@ -1,11 +1,13 @@
 import { WORDS } from "./core/words.js";
-import { makeLibrary, decodeShare, importData } from "./core/library.js";
+import { makeLibrary, importData } from "./core/library.js";
+import { decodeShare } from "./core/share.js";
 import { Synth, speak } from "./audio.js";
 import { Player } from "./player.js";
 import { loadCustom, saveCustom, loadSettings, saveSettings } from "./store.js";
 import { mountPlay } from "./ui/play.js";
 import { mountLibrary, summary } from "./ui/library.js";
 import { mountWords } from "./ui/words.js";
+import { mountLessonEditor } from "./ui/lesson-editor.js";
 import { $, $$ } from "./ui/render.js";
 
 const synth = new Synth();
@@ -14,7 +16,7 @@ const settings = loadSettings();
 let custom = loadCustom();
 let lib = makeLibrary(custom);
 let views = {};
-let active = "play";
+let active = "";
 
 const app = {
   synth,
@@ -24,9 +26,9 @@ const app = {
   custom: () => custom,
   saveSettings: () => saveSettings(settings),
 
-  /** Replace the user's patterns and songs. Returns false if the browser refused to save. */
+  /** Replace the user's patterns, songs and lessons. Returns false if the browser refused to save. */
   setCustom(next) {
-    custom = next;
+    custom = { patterns: next.patterns, songs: next.songs, lessons: next.lessons || [] };
     lib = makeLibrary(custom);
     const ok = saveCustom(custom);
     views.play?.refresh();
@@ -72,57 +74,72 @@ const app = {
 };
 
 // ---------- screens ----------
-const VIEWS = ["play", "library", "words"];
+const VIEWS = ["play", "library", "words", "lesson"];
+const TITLES = { play: "Play", library: "Patterns & songs", words: "Words", lesson: "Strike editor" };
 
 function show() {
-  const name = location.hash.replace(/^#/, "").split("=")[0];
-  active = VIEWS.includes(name) ? name : "play";
+  const [name, param = ""] = location.hash.replace(/^#/, "").split("=");
+  const next = VIEWS.includes(name) ? name : "play";
+  if (active === "lesson" && next !== "lesson") views.lesson.close();
+  if (active === "play" && next !== "play") views.play.setVisible(false);
+  active = next;
   for (const v of VIEWS) $(`#view-${v}`).hidden = v !== active;
+  const tab = active === "lesson" ? "library" : active;
   $$(".tabs a").forEach((a) => {
-    if (a.dataset.tab === active) a.setAttribute("aria-current", "page");
+    if (a.dataset.tab === tab) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
-  document.title = `${{ play: "Play", library: "Patterns & songs", words: "Words" }[active]} · Taiko Trainer`;
+  document.title = `${TITLES[active]} · Taiko Trainer`;
+  if (active === "play") views.play.setVisible(true);
+  if (active === "lesson") views.lesson.open(param);
 }
 
 // ---------- shared links ----------
 function readShareLink() {
   const m = location.hash.match(/^#share=([A-Za-z0-9_-]+)$/);
-  if (!m) return;
+  if (!m) return false;
   history.replaceState(null, "", `${location.pathname}${location.search}#library`);
   const banner = $("#banner");
   const textEl = $("#bannerText");
+  const addBtn = $("#bannerAdd");
   let data;
   try {
     data = decodeShare(m[1]);
-    importData({ patterns: [], songs: [] }, data); // validate only
+    importData({ patterns: [], songs: [], lessons: [] }, data); // validate only
   } catch {
-    textEl.textContent = "This share link is damaged, so nothing was added. Ask for the link again.";
-    $("#bannerAdd").hidden = true;
+    textEl.textContent = "This share link is damaged or cut off, so nothing was added. Ask for the link again, or for a file.";
+    addBtn.hidden = true;
     banner.hidden = false;
-    return;
+    return true;
   }
+  const name = (item, fallback) => `“${String(item?.name || fallback).slice(0, 80)}”`;
+  const lesson = data.lessons?.[0];
   const song = data.songs?.[0];
-  const pattern = data.patterns?.[0];
-  textEl.textContent = song
-    ? `Someone shared the song “${String(song.name || "Untitled song").slice(0, 80)}” with you.`
-    : `Someone shared the pattern “${String(pattern?.name || "Untitled pattern").slice(0, 80)}” with you.`;
-  $("#bannerAdd").hidden = false;
+  textEl.textContent = lesson
+    ? `Someone shared the video lesson ${name(lesson, "Untitled")} with you.`
+    : song
+      ? `Someone shared the song ${name(song, "Untitled song")} with you.`
+      : `Someone shared the pattern ${name(data.patterns?.[0], "Untitled pattern")} with you.`;
+  addBtn.hidden = false;
   banner.hidden = false;
-  $("#bannerAdd").onclick = () => {
+  addBtn.onclick = () => {
     const { custom: next, added } = importData(custom, data);
     const ok = app.setCustom(next);
-    textEl.textContent = `${summary(added)}${ok ? " You’ll find it below." : " This browser would not save it, though."}`;
-    $("#bannerAdd").hidden = true;
+    let message = `${summary(added)}${ok ? " You’ll find it below." : " This browser would not save it, though."}`;
+    if (added.lessons.some((l) => l.video?.type === "file")) message += " Open the lesson and attach its video file to play along.";
+    textEl.textContent = message;
+    addBtn.hidden = true;
   };
+  return true;
 }
 $("#bannerDismiss").addEventListener("click", () => { $("#banner").hidden = true; });
 
 // ---------- keyboard ----------
 document.addEventListener("keydown", (e) => {
-  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   const t = e.target;
   if (t?.closest?.("input, textarea, select, [contenteditable]")) return;
+  if (active === "lesson") { views.lesson.onKey(e); return; }
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   const keys = { d: ["L", "rim"], f: ["L", "center"], j: ["R", "center"], k: ["R", "rim"] };
   const hit = keys[e.key.toLowerCase()];
   const drum = views[active]?.drum;
@@ -131,15 +148,32 @@ document.addEventListener("keydown", (e) => {
     app.freeHit(drum, hit[0], hit[1]);
     return;
   }
-  if (e.key === " " && active === "play" && !t?.closest?.("button, a, summary")) {
+  if (e.key === " " && active === "play" && !t?.closest?.("button, a, summary, video")) {
     e.preventDefault();
     views.play.toggle();
   }
 });
 
+// ---------- mobile: unlock audio on the first touch ----------
+// iOS and Android only allow sound after a tap, and the audio clock must be
+// started inside that tap.
+function unlockAudio() {
+  synth.ensure();
+  if (synth.ctx?.state === "running") {
+    for (const ev of ["pointerdown", "touchend", "keydown"]) document.removeEventListener(ev, unlockAudio, true);
+  }
+}
+for (const ev of ["pointerdown", "touchend", "keydown"]) document.addEventListener(ev, unlockAudio, { capture: true, passive: true });
+
 // ---------- start ----------
-views = { play: mountPlay(app), library: mountLibrary(app), words: mountWords(app) };
+views = { play: mountPlay(app), library: mountLibrary(app), words: mountWords(app), lesson: mountLessonEditor(app) };
 readShareLink();
 show();
 window.addEventListener("hashchange", () => { readShareLink(); show(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) player.stop(); });
+window.addEventListener("pagehide", () => views.lesson.flush());
+
+// Offline use and "Add to Home Screen": a service worker keeps a copy of the app.
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  navigator.serviceWorker.register("sw.js").catch(() => { /* works without it */ });
+}

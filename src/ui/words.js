@@ -104,6 +104,7 @@ export function mountWords(app) {
     if (el) select(el.dataset.id, true);
   });
 
+  $("#all-h").textContent = `All ${Object.keys(WORDS).length} words`;
   select("don", false);
   return { drum };
 }

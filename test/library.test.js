@@ -2,8 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   BUILTIN_PATTERNS, BUILTIN_SONGS, makeLibrary, normalizePattern, normalizeSong, normalizeCustom,
-  importData, exportData, shareData, encodeShare, decodeShare,
+  importData, exportData, shareData,
 } from "../src/core/library.js";
+import { encodeShare, decodeShare } from "../src/core/share.js";
 import { resolve } from "../src/core/timeline.js";
 
 test("every built-in pattern parses cleanly", () => {
@@ -35,7 +36,7 @@ test("saved data with junk or clashing ids is cleaned", () => {
   const c = normalizeCustom({ patterns: [{ id: "b-steady-don", name: "Clash" }, { id: "a", words: "Don" }, { id: "a", words: "Ka" }, 7], songs: "x" });
   assert.deepEqual(c.patterns.map((p) => p.id), ["a"]);
   assert.deepEqual(c.songs, []);
-  assert.deepEqual(normalizeCustom(null), { patterns: [], songs: [] });
+  assert.deepEqual(normalizeCustom(null), { patterns: [], songs: [], lessons: [] });
 });
 
 test("import adds new items, skips duplicates and renames clashes", () => {
@@ -76,13 +77,14 @@ test("import rejects files that aren't ours", () => {
 test("share links round-trip, including Japanese text", () => {
   const p = normalizePattern({ id: "p-x", name: "お祭り Don", words: "ドン ドコ", bpm: 110 });
   const s = normalizeSong({ id: "s-x", name: "Song", bpm: 100, sections: [{ patternId: "p-x", repeats: 2 }, { patternId: "b-don-ka", repeats: 1 }] });
-  const lib = makeLibrary({ patterns: [p], songs: [s] });
+  const lib = makeLibrary({ patterns: [p], songs: [s], lessons: [] });
   const data = shareData("song", lib.song("s-x"), lib);
   assert.deepEqual(data.patterns.map((x) => x.id), ["p-x"], "only the user's own patterns travel along");
   const code = encodeShare(data);
   assert.match(code, /^[A-Za-z0-9_-]+$/);
   assert.deepEqual(decodeShare(code), data);
   assert.throws(() => decodeShare("%%%"));
+  assert.throws(() => decodeShare("AAAA"), "random bytes are not a valid zlib stream");
 });
 
 test("export leaves out built-in markers", () => {

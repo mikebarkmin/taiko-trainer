@@ -75,7 +75,7 @@ export function palette(order) {
 }
 
 /** Pattern and song choices for a <select>, grouped. */
-export function itemOptions(lib, { songs = true, selected = "" } = {}) {
+export function itemOptions(lib, { songs = true, lessons = songs, selected = "" } = {}) {
   const opt = (kind, item) => {
     const v = `${kind}:${item.id}`;
     return `<option value="${esc(v)}"${v === selected ? " selected" : ""}>${esc(item.name)}</option>`;
@@ -87,5 +87,6 @@ export function itemOptions(lib, { songs = true, selected = "" } = {}) {
     html += group("My songs", "song", lib.songs.filter((s) => !s.builtin));
     html += group("Example songs", "song", lib.songs.filter((s) => s.builtin));
   }
+  if (lessons) html += group("Video lessons", "lesson", lib.lessons || []);
   return html;
 }

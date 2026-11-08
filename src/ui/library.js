@@ -3,14 +3,18 @@
 import { PALETTE, WORDS, parseWords, formatWords, beatsOf, fmtBeats } from "../core/words.js";
 import { resolve, duration, totalBeats, fmtTime } from "../core/timeline.js";
 import {
-  newId, normalizePattern, normalizeSong, exportData, importData, shareData, encodeShare,
+  newId, normalizePattern, normalizeSong, exportData, importData, shareData,
 } from "../core/library.js";
+import { normalizeLesson, describeVideo, packageHeader, readPackageHeader, PACKAGE_HEADER } from "../core/lessons.js";
+import { encodeShare, shareLink, LONG_LINK } from "../core/share.js";
+import { fmtClock } from "../core/util.js";
+import { getVideo, putVideo, deleteVideo, hasVideo, storedVideoIds, storageSummary } from "../videostore.js";
 import { $, $$, esc, tokens, palette, itemOptions } from "./render.js";
 
 export function mountLibrary(app) {
   const els = {
-    patterns: $("#patternList"), songs: $("#songList"), editor: $("#editor"),
-    newPattern: $("#newPattern"), newSong: $("#newSong"),
+    patterns: $("#patternList"), songs: $("#songList"), lessons: $("#lessonList"), editor: $("#editor"),
+    newPattern: $("#newPattern"), newSong: $("#newSong"), newLesson: $("#newLesson"), storage: $("#storageInfo"),
     exportBtn: $("#exportBtn"), importFile: $("#importFile"), msg: $("#libMsg"),
   };
   let editing = null; // {kind, draft, isNew, dirty}
@@ -69,7 +73,32 @@ export function mountLibrary(app) {
     return `${n} section${n === 1 ? "" : "s"} · ${s.bpm} bpm · ${fmtTime(duration(r, 1))}${r.problems.length ? " · has missing patterns" : ""}`;
   }
 
+  function lessonMeta(l) {
+    const n = l.strikes.length;
+    const parts = [describeVideo(l.video), `${n} strike${n === 1 ? "" : "s"}`];
+    if (n) parts.push(fmtClock(l.strikes[n - 1].t, 0));
+    if (l.video?.type === "file" && !hasVideo(l.id)) parts.push("video not on this device");
+    return parts.join(" · ");
+  }
+
+  function lessonRow(l) {
+    return `<li class="item" data-kind="lesson" data-id="${esc(l.id)}">
+      <div class="item-main">
+        <span class="item-name">${esc(l.name)}</span>
+        <span class="item-meta">${esc(lessonMeta(l))}</span>
+      </div>
+      <div class="item-actions">
+        <button type="button" class="btn small primary" data-act="play">Play</button>
+        <a class="btn small" href="#lesson=${esc(l.id)}">Edit strikes</a>
+        <button type="button" class="btn small" data-act="share">Share</button>
+        <button type="button" class="btn small" data-act="download">Download</button>
+        <button type="button" class="btn small ghost" data-act="delete">Delete</button>
+      </div>
+    </li>`;
+  }
+
   function row(kind, item) {
+    if (kind === "lesson") return lessonRow(item);
     const editable = !item.builtin;
     const label = kind === "song" ? "Example" : "Common";
     return `<li class="item${editing && editing.draft.id === item.id ? " editing" : ""}" data-kind="${kind}" data-id="${esc(item.id)}">
@@ -93,6 +122,10 @@ export function mountLibrary(app) {
     const mineFirst = (list) => list.filter((x) => !x.builtin).concat(list.filter((x) => x.builtin));
     els.patterns.innerHTML = mineFirst(lib.patterns).map((p) => row("pattern", p)).join("");
     els.songs.innerHTML = mineFirst(lib.songs).map((s) => row("song", s)).join("");
+    els.lessons.innerHTML = lib.lessons.length
+      ? lib.lessons.map(lessonRow).join("")
+      : `<li class="item empty-item">No video lessons yet. Add a video (a file or a YouTube link) and mark when each strike happens.</li>`;
+    storageSummary().then((t) => { els.storage.textContent = t; });
   }
 
   function onListClick(e) {
@@ -107,16 +140,48 @@ export function mountLibrary(app) {
     else if (act === "edit") open(kind, structuredClone(stripBuiltin(item)), false);
     else if (act === "copy") open(kind, { ...structuredClone(stripBuiltin(item)), id: newId(kind === "song" ? "s" : "p"), name: `${item.name} (copy)` }, true);
     else if (act === "share") share(kind, item);
+    else if (act === "download") downloadLesson(item);
     else if (act === "delete") remove(kind, item);
   }
 
   const stripBuiltin = ({ builtin, ...rest }) => rest;
 
   function share(kind, item) {
-    const code = encodeShare(shareData(kind, item, app.lib()));
-    const link = `${location.origin}${location.pathname}#share=${code}`;
-    say(`Share link for “${item.name}”. Open it on another device (or send it) to add it there.`, { link });
+    const link = shareLink(encodeShare(shareData(kind, item, app.lib())));
+    let message = `Share link for “${item.name}”. Open it on another device (or send it) to add it there.`;
+    if (kind === "lesson" && item.video?.type === "file") {
+      message += " The video file itself isn’t in the link: the other device needs the same file, or use Download to send the lesson with its video.";
+    }
+    if (link.length > LONG_LINK) message += " This link is long; if a chat app cuts it off, send a file with Export or Download instead.";
+    say(message, { link });
     copy(link, null, $("#libMsg .share-row button"));
+  }
+
+  function saveFile(blob, filename) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  const slug = (name) => (String(name).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "lesson");
+
+  async function downloadLesson(lesson) {
+    const data = { ...exportData({ patterns: [], songs: [], lessons: [lesson] }) };
+    const json = new TextEncoder().encode(JSON.stringify(data));
+    const video = lesson.video?.type === "file" ? await getVideo(lesson.id) : null;
+    if (video) {
+      saveFile(new Blob([packageHeader(json.length), json, video], { type: "application/octet-stream" }), `${slug(lesson.name)}.taiko`);
+      say(`Downloaded “${lesson.name}” with its video (${Math.round(video.size / 1e6) || 1} MB). Import this file on another device to get both.`);
+    } else {
+      saveFile(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), `${slug(lesson.name)}.json`);
+      say(lesson.video?.type === "file"
+        ? `Downloaded the strikes of “${lesson.name}”. Its video isn’t on this device, so it isn’t included.`
+        : `Downloaded “${lesson.name}”.`);
+    }
   }
 
   function remove(kind, item) {
@@ -129,7 +194,10 @@ export function mountLibrary(app) {
     const c = app.custom();
     const next = kind === "pattern"
       ? { ...c, patterns: c.patterns.filter((p) => p.id !== item.id) }
-      : { ...c, songs: c.songs.filter((s) => s.id !== item.id) };
+      : kind === "lesson"
+        ? { ...c, lessons: c.lessons.filter((l) => l.id !== item.id) }
+        : { ...c, songs: c.songs.filter((s) => s.id !== item.id) };
+    if (kind === "lesson") deleteVideo(item.id).then(renderLists);
     if (editing && editing.draft.id === item.id) close(true);
     const ok = app.setCustom(next);
     say(ok ? `Deleted “${item.name}”.` : "Deleted for now, but this browser would not save the change.", { error: !ok });
@@ -510,26 +578,27 @@ export function mountLibrary(app) {
   // ---------- top buttons ----------
   els.patterns.addEventListener("click", onListClick);
   els.songs.addEventListener("click", onListClick);
+  els.lessons.addEventListener("click", onListClick);
   els.newPattern.addEventListener("click", () =>
     open("pattern", { id: newId("p"), name: "", words: "", bpm: 90, swing: false, drum: "nagado", notes: "" }, true));
   els.newSong.addEventListener("click", () =>
     open("song", { id: newId("s"), name: "", bpm: 90, sections: [], notes: "" }, true));
+  els.newLesson.addEventListener("click", () => {
+    const lesson = normalizeLesson({ name: "New video lesson" });
+    const c = app.custom();
+    app.setCustom({ ...c, lessons: c.lessons.concat(lesson) });
+    location.hash = `#lesson=${lesson.id}`;
+  });
 
   els.exportBtn.addEventListener("click", () => {
     const c = app.custom();
-    if (!c.patterns.length && !c.songs.length) {
-      say("There is nothing to export yet. Make a pattern or song first.", { error: true });
+    if (!c.patterns.length && !c.songs.length && !c.lessons.length) {
+      say("There is nothing to export yet. Make a pattern, song or video lesson first.", { error: true });
       return;
     }
-    const blob = new Blob([JSON.stringify(exportData(c), null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `taiko-trainer-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    say(`Exported ${c.patterns.length} pattern${c.patterns.length === 1 ? "" : "s"} and ${c.songs.length} song${c.songs.length === 1 ? "" : "s"}.`);
+    saveFile(new Blob([JSON.stringify(exportData(c), null, 2)], { type: "application/json" }), `taiko-trainer-${new Date().toISOString().slice(0, 10)}.json`);
+    const added = { patterns: c.patterns, songs: c.songs, lessons: c.lessons };
+    say(`Exported ${summary(added).replace(/^Added /, "")}${c.lessons.some((l) => l.video?.type === "file") ? " Video files aren’t in this file; use Download on a lesson to send it with its video." : ""}`);
   });
 
   els.importFile.addEventListener("change", async () => {
@@ -537,17 +606,37 @@ export function mountLibrary(app) {
     els.importFile.value = "";
     if (!file) return;
     try {
-      const data = JSON.parse(await file.text());
-      const { custom, added } = importData(app.custom(), data);
+      const head = new Uint8Array(await file.slice(0, PACKAGE_HEADER).arrayBuffer());
+      const jsonLength = readPackageHeader(head);
+      let data;
+      let video = null;
+      if (jsonLength >= 0) {
+        // a lesson file: lesson JSON followed by the video
+        data = JSON.parse(await file.slice(PACKAGE_HEADER, PACKAGE_HEADER + jsonLength).text());
+        const mime = data.lessons?.[0]?.video?.mime || "video/mp4";
+        video = file.slice(PACKAGE_HEADER + jsonLength, file.size, mime);
+      } else {
+        data = JSON.parse(await file.text());
+      }
+      const { custom, added, lessonIds } = importData(app.custom(), data);
+      let stored = true;
+      if (video && data.lessons?.[0]) {
+        const id = lessonIds.get(data.lessons[0].id);
+        if (id) stored = await putVideo(id, video);
+      }
       const ok = app.setCustom(custom);
-      say(`${summary(added)}${ok ? "" : " This browser would not save them, though."}`, { error: !ok });
+      let message = summary(added);
+      if (video && !stored) message += " The video couldn’t be saved on this device (it may be full), so it plays only until you close the page.";
+      if (!ok) message += " This browser would not save them, though.";
+      say(message, { error: !ok || !stored });
     } catch (err) {
-      say(err instanceof SyntaxError ? "That file isn’t valid JSON." : err.message, { error: true });
+      say(err instanceof SyntaxError ? "That file isn’t a Taiko Trainer file." : err.message, { error: true });
     }
   });
 
   els.editor.innerHTML = emptyEditor();
   renderLists();
+  storedVideoIds().then(renderLists);
 
   return {
     refresh() {
@@ -563,13 +652,13 @@ export function mountLibrary(app) {
   };
 }
 
-/** "Added 2 patterns and 1 song." */
+/** "Added 2 patterns, 1 song and 1 video lesson." */
 export function summary(added) {
-  const p = added.patterns.length;
-  const s = added.songs.length;
-  if (!p && !s) return "Nothing new to add. You already have all of it.";
-  const parts = [];
-  if (p) parts.push(`${p} pattern${p === 1 ? "" : "s"}`);
-  if (s) parts.push(`${s} song${s === 1 ? "" : "s"}`);
-  return `Added ${parts.join(" and ")}.`;
+  const count = (list, one) => {
+    const n = list?.length || 0;
+    return n ? `${n} ${one}${n === 1 ? "" : "s"}` : "";
+  };
+  const parts = [count(added.patterns, "pattern"), count(added.songs, "song"), count(added.lessons, "video lesson")].filter(Boolean);
+  if (!parts.length) return "Nothing new to add. You already have all of it.";
+  return `Added ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}.`;
 }

@@ -5,6 +5,8 @@ import { WORDS, fmtBeats } from "../core/words.js";
 import { createDrum } from "../drum.js";
 import { speak } from "../audio.js";
 import { $, $$, esc, tokens, itemOptions } from "./render.js";
+import { createLessonPlayer } from "./lesson-player.js";
+import { describeVideo } from "../core/lessons.js";
 
 const FALLBACK = "pattern:b-don-doko";
 
@@ -18,6 +20,10 @@ export function mountPlay(app) {
     countIn: $("#optCountIn"), loop: $("#optLoop"), guide: $("#optGuide"), click: $("#optClick"), speak: $("#optSpeak"),
   };
   const drum = createDrum($("#playDrum"), { onTap: (hand, where) => app.freeHit(drum, hand, where) });
+  const lessonPlayer = createLessonPlayer(app, { drum, setNow: (k, r) => setNow(k, r) });
+  const modeBeats = $("#modeBeats");
+  const modeVideo = $("#modeVideo");
+  let visible = true;
 
   let current = null; // {kind, item}
   let resolved = null;
@@ -38,14 +44,23 @@ export function mountPlay(app) {
       S.bpm = item.bpm;
     }
     current = { kind, item };
-    resolved = resolve(kind, item, app.lib());
+    resolved = kind === "lesson" ? { sections: [], problems: [] } : resolve(kind, item, app.lib());
   }
+
+  const isLesson = () => current.kind === "lesson";
 
   /** Re-read the library (after edits) and redraw everything. */
   function refresh() {
-    if (mine) app.player.stop();
+    const before = current && `${current.kind}:${current.item.id}`;
     pick();
     els.select.innerHTML = itemOptions(app.lib(), { selected: S.item });
+    if (isLesson() && before === S.item) {
+      // the lesson was edited: keep the video, update the strikes
+      lessonPlayer.load(current.item);
+      renderInfo();
+      return;
+    }
+    if (mine) app.player.stop();
     renderAll();
   }
 
@@ -54,7 +69,7 @@ export function mountPlay(app) {
     if (mine) app.player.stop();
     S.item = value;
     pick();
-    S.bpm = current.item.bpm;
+    if (!isLesson()) S.bpm = current.item.bpm;
     app.saveSettings();
     els.select.value = S.item;
     renderAll();
@@ -62,16 +77,28 @@ export function mountPlay(app) {
 
   function renderAll() {
     renderInfo();
+    setNow("", "");
+    drum.setWord("");
+    els.status.textContent = "";
+    modeBeats.hidden = isLesson();
+    modeVideo.hidden = !isLesson();
+    if (isLesson()) {
+      lessonPlayer.load(current.item);
+      lessonPlayer.setActive(visible);
+      return;
+    }
+    lessonPlayer.unload();
     renderSheet();
     renderTempo();
-    setNow("", "");
-    drum.setWord(current.kind === "song" ? "曲" : "");
-    els.status.textContent = "";
   }
 
   function renderInfo() {
     els.notes.textContent = current.item.notes || "";
     els.notes.hidden = !current.item.notes;
+    if (isLesson()) {
+      const n = current.item.strikes.length;
+      els.info.textContent = `${describeVideo(current.item.video)} · ${n} strike${n === 1 ? "" : "s"}`;
+    }
   }
 
   function sectionMeta(sec) {
@@ -228,7 +255,8 @@ export function mountPlay(app) {
   }
 
   function toggle() {
-    if (mine) app.player.stop();
+    if (isLesson()) lessonPlayer.toggle();
+    else if (mine) app.player.stop();
     else play();
   }
 
@@ -255,5 +283,15 @@ export function mountPlay(app) {
   refresh();
   syncButton();
 
-  return { drum, refresh, choose, toggle, get playing() { return mine; } };
+  return {
+    drum,
+    refresh,
+    choose,
+    toggle,
+    setVisible(on) {
+      visible = on;
+      lessonPlayer.setActive(on && isLesson());
+    },
+    get playing() { return mine; },
+  };
 }
