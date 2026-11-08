@@ -79,6 +79,7 @@ export default {
   "opt.guide": "Leittrommel hören",
   "opt.click": "Metronom-Klick",
   "opt.speak": "Rufe ansagen",
+  "opt.sayWords": "Wörter sagen",
   strikes: ({ n }) => plural(n, "Schlag", "Schläge"),
   "voice.missing": "Auf diesem Gerät gibt es keine japanische Stimme, deshalb werden die Rufe mit einer deutschen oder englischen gelesen. Für echte Kakegoe füge in den Spracheinstellungen des Systems eine japanische Stimme hinzu (Windows: Zeit und Sprache; Mac, iPhone, iPad: Bedienungshilfen → Gesprochene Inhalte → Systemstimme; Android: Sprachausgabe), und lade diese Seite neu.",
 

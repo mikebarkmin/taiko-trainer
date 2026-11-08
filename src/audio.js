@@ -2,7 +2,7 @@
 // spoken words: recorded clips from sounds/voice/ when there are any,
 // otherwise the device's own speech voice.
 
-import { WORDS } from "./core/words.js";
+import { WORDS, SYLLABLES } from "./core/words.js";
 
 const VOICE_DIR = "sounds/voice/";
 const VOICE_GAIN = 0.9;
@@ -12,10 +12,24 @@ export const voiceClips = typeof document === "undefined"
   ? Promise.resolve(new Set())
   : fetch(`${VOICE_DIR}index.json`)
     .then((r) => (r.ok ? r.json() : null))
-    .then((j) => new Set(Object.keys(j?.clips || {}).filter((id) => WORDS[id])))
+    .then((j) => new Set(Object.keys(j?.clips || {}).filter((id) => WORDS[id] || SYLLABLES.has(id))))
     .catch(() => new Set());
 let clipIds = new Set();
 voiceClips.then((ids) => { clipIds = ids; });
+
+// The clip files are fetched while the page loads, so between the first tap
+// and the first playback only decoding is left to do. Otherwise a shout
+// early in a song beats its own clip, and the device voice cuts in.
+const fetched = new Map(); // word id → Promise of the clip's bytes (or null)
+const fetchClip = (id) => {
+  if (!fetched.has(id)) {
+    fetched.set(id, fetch(`${VOICE_DIR}${id}.mp3`)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+      .catch(() => null));
+  }
+  return fetched.get(id);
+};
+voiceClips.then((ids) => ids.forEach(fetchClip));
 
 /** Where the sound starts: generated speech often begins with a little silence. */
 function soundStart(buf) {
@@ -56,7 +70,7 @@ export class Synth {
         const d = noise.getChannelData(0);
         for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
         Object.assign(this, { ctx, master, noise });
-        voiceClips.then((ids) => ids.forEach((id) => this.#load(id)));
+        voiceClips.then(() => clipIds.forEach((id) => this.#load(id))); // already fetched; just decode
       }
       if (this.ctx.state === "suspended") this.ctx.resume();
       return this.ctx;
@@ -66,17 +80,16 @@ export class Synth {
   }
 
   #load(id) {
+    if (this.#clips.has(id)) return Promise.resolve(this.#clips.get(id));
     if (!this.ctx || !clipIds.has(id)) return Promise.resolve(null);
     if (!this.#loading.has(id)) {
-      this.#loading.set(id, fetch(`${VOICE_DIR}${id}.mp3`)
-        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
-        .then((bytes) => this.ctx.decodeAudioData(bytes))
+      this.#loading.set(id, fetchClip(id)
+        .then((bytes) => (bytes ? this.ctx.decodeAudioData(bytes) : null))
         .then((buf) => {
-          const clip = { buf, start: soundStart(buf) };
-          this.#clips.set(id, clip);
+          const clip = buf ? { buf, start: soundStart(buf) } : null;
+          if (clip) this.#clips.set(id, clip);
           return clip;
-        })
-        .catch(() => null));
+        }));
     }
     return this.#loading.get(id);
   }

@@ -18,7 +18,7 @@ export function mountPlay(app) {
     bpmReset: $("#bpmReset"), tempoHint: $("#tempoHint"),
     playBtn: $("#playBtn"), sheet: $("#sheet"), status: $("#playStatus"),
     nowKana: $("#nowKana"), nowRo: $("#nowRo"), pulse: $$("#beatPulse i"),
-    countIn: $("#optCountIn"), loop: $("#optLoop"), guide: $("#optGuide"), click: $("#optClick"), speak: $("#optSpeak"),
+    countIn: $("#optCountIn"), loop: $("#optLoop"), guide: $("#optGuide"), click: $("#optClick"), speak: $("#optSpeak"), sayWords: $("#optSayWords"),
   };
   const drum = createDrum($("#playDrum"), { onTap: (hand, where) => app.freeHit(drum, hand, where) });
   const lessonPlayer = createLessonPlayer(app, { drum, setNow: (k, r) => setNow(k, r) });
@@ -244,6 +244,7 @@ export function mountPlay(app) {
       guide: () => S.guide,
       click: () => S.click,
       speak: () => S.speak,
+      words: () => S.sayWords,
       countIn: S.countIn,
     }, handlers);
     if (!ok) {
@@ -269,7 +270,7 @@ export function mountPlay(app) {
   els.bpmUp.addEventListener("click", () => setBpm(S.bpm + 5));
   els.bpmReset.addEventListener("click", () => setBpm(current.item.bpm));
   els.playBtn.addEventListener("click", toggle);
-  for (const k of ["countIn", "loop", "guide", "click", "speak"]) {
+  for (const k of ["countIn", "loop", "guide", "click", "speak", "sayWords"]) {
     els[k].checked = S[k];
     els[k].addEventListener("change", () => { S[k] = els[k].checked; app.saveSettings(); });
   }

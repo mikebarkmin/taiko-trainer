@@ -71,6 +71,14 @@ export const WORDS = {
     tip: "Teke on the small drum works like Doko on the big one." },
 };
 
+/**
+ * For words with two hits, the syllable each hit says (whispered/said along):
+ * Doko says "do" with the right bachi, "ko" with the left. Te and Ke exist
+ * only as voice clips, not as words.
+ */
+export const PARTS = { doko: ["do", "ko"], tsuku: ["tsu", "ku"], kara: ["ka", "ra"], teke: ["te", "ke"] };
+export const SYLLABLES = new Set(Object.values(PARTS).flat());
+
 for (const w of Object.values(WORDS)) {
   if (w.group === "shout") { w.size = "Loud, from the belly"; w.len = "1 beat"; w.tip = SHOUT_TIP; }
 }

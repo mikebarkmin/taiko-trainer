@@ -81,3 +81,27 @@ test("guide off means no drum sounds, but visuals still fire", () => {
     mock.timers.reset();
   }
 });
+
+test("say the words: each hit says its syllable, rests at their place", () => {
+  mock.timers.enable({ apis: ["setInterval", "setTimeout"] });
+  try {
+    const synth = fakeSynth();
+    synth.voices = [];
+    synth.voice = (id, at) => { synth.voices.push({ id, at: +(at - 10).toFixed(4) }); return true; };
+    const player = new Player(synth);
+    player.start(resolve("pattern", { ...pattern, words: "Don Doko Su Sore" }, null),
+      { factor: () => 1, loop: off, guide: on, click: off, speak: on, words: on, countIn: false });
+    run(synth, 3);
+    // Don says "don" with its hit; Doko says "do" on the right bachi and
+    // "ko" on the left; Su is said at its beat; Sore is a shout event.
+    assert.deepEqual(synth.voices, [
+      { id: "don", at: 0.12 },
+      { id: "do", at: 0.62 },
+      { id: "ko", at: 0.87 },
+      { id: "su", at: 1.12 },
+      { id: "sore", at: 1.62 },
+    ]);
+  } finally {
+    mock.timers.reset();
+  }
+});

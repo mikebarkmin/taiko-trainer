@@ -1,0 +1,96 @@
+{
+  "clips": {
+    "don": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ドン"
+    },
+    "kon": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "コン"
+    },
+    "do": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ド"
+    },
+    "ko": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "コ"
+    },
+    "doko": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ドコ"
+    },
+    "tsu": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ツ"
+    },
+    "ku": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ク"
+    },
+    "tsuku": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ツク"
+    },
+    "ka": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "カッ"
+    },
+    "ra": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ラ"
+    },
+    "kara": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "カラ"
+    },
+    "su": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ス"
+    },
+    "sa": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "サ"
+    },
+    "sore": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "それっ"
+    },
+    "yoisho": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "よいしょっ"
+    },
+    "ha": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "はっ"
+    },
+    "yo": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "よっ"
+    },
+    "ho": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ほっ"
+    },
+    "iya": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "いやーっ"
+    },
+    "ten": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "テン"
+    },
+    "teke": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "テケ"
+    },
+    "te": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "テ"
+    },
+    "ke": {
+      "voice": "ja-JP-NanamiNeural",
+      "text": "ケ"
+    }
+  }
+}

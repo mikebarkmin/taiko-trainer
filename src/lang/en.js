@@ -80,6 +80,7 @@ export default {
   "opt.guide": "Guide drum sound",
   "opt.click": "Metronome click",
   "opt.speak": "Say the shouts",
+  "opt.sayWords": "Say the words",
   strikes: ({ n }) => plural(n, "strike", "strikes"),
   "voice.missing": "This device has no Japanese voice, so shouts are read with an English one. For real kakegoe, add a Japanese voice in the system’s speech settings (Windows: Time & language → Speech; Mac, iPhone, iPad: Accessibility → Spoken Content → System Voice; Android: Text-to-speech output), then reload this page.",
 

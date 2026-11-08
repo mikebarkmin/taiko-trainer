@@ -1,7 +1,7 @@
 // Turns a pattern or song into timed events the player can schedule.
 // Pure module: no DOM, no audio.
 
-import { WORDS, parseWords, beatsOf } from "./words.js";
+import { WORDS, PARTS, parseWords, beatsOf } from "./words.js";
 import { t, quote } from "../i18n.js";
 
 export const MIN_BPM = 30;
@@ -87,12 +87,16 @@ export function chunk(section, si, rep, factor = 1) {
     const w = WORDS[id];
     const t = swingPos(b, swing) * spb;
     events.push({ type: "token", t, si, rep, ti, id });
-    for (const h of w.hits) {
+    const parts = PARTS[id];
+    w.hits.forEach((h, k) => {
       events.push({
         type: "hit", t: swingPos(b + h.t, swing) * spb,
         hand: h.hand, where: h.where, vol: h.vol, ring: h.ring, drum: w.drum || drum,
+        // what this hit says when the words are spoken: "do" for the right
+        // hit of Doko, "ko" for the left — the syllables follow the hands
+        say: parts ? parts[k] : id,
       });
-    }
+    });
     if (w.group === "shout") events.push({ type: "shout", t, id });
     b += w.beats;
   });

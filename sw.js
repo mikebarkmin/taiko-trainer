@@ -2,7 +2,7 @@
 // to the home screen). Always tries the network first, so updates show up
 // right away when online. Videos and YouTube are never cached here.
 
-const CACHE = "taiko-trainer-v3";
+const CACHE = "taiko-trainer-v7";
 const SHELL = [
     "./",
     "index.html",
@@ -13,6 +13,30 @@ const SHELL = [
     "icons/icon-512.png",
     "icons/icon-maskable-512.png",
     "icons/icon.svg",
+    "sounds/voice/doko.mp3",
+    "sounds/voice/do.mp3",
+    "sounds/voice/don.mp3",
+    "sounds/voice/ha.mp3",
+    "sounds/voice/ho.mp3",
+    "sounds/voice/index.json",
+    "sounds/voice/iya.mp3",
+    "sounds/voice/ka.mp3",
+    "sounds/voice/kara.mp3",
+    "sounds/voice/ke.mp3",
+    "sounds/voice/ko.mp3",
+    "sounds/voice/kon.mp3",
+    "sounds/voice/ku.mp3",
+    "sounds/voice/ra.mp3",
+    "sounds/voice/sa.mp3",
+    "sounds/voice/sore.mp3",
+    "sounds/voice/su.mp3",
+    "sounds/voice/te.mp3",
+    "sounds/voice/teke.mp3",
+    "sounds/voice/ten.mp3",
+    "sounds/voice/tsuku.mp3",
+    "sounds/voice/tsu.mp3",
+    "sounds/voice/yoisho.mp3",
+    "sounds/voice/yo.mp3",
     "src/audio.js",
     "src/core/lessons.js",
     "src/core/library.js",

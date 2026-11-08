@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS = {
   guide: true,
   click: true,
   speak: true,
+  sayWords: false,
   videoRate: 1,
   videoSound: true,
   videoGuide: false,
@@ -55,7 +56,7 @@ export function loadSettings() {
     if (typeof raw.item === "string" && /^(pattern|song|lesson):[A-Za-z0-9_-]{1,64}$/.test(raw.item)) s.item = raw.item;
     const bpm = Math.round(Number(raw.bpm));
     if (bpm >= MIN_BPM && bpm <= MAX_BPM) s.bpm = bpm;
-    for (const k of ["countIn", "loop", "guide", "click", "speak", "videoSound", "videoGuide"]) if (typeof raw[k] === "boolean") s[k] = raw[k];
+    for (const k of ["countIn", "loop", "guide", "click", "speak", "sayWords", "videoSound", "videoGuide"]) if (typeof raw[k] === "boolean") s[k] = raw[k];
     if ([0.25, 0.5, 0.75, 1, 1.25].includes(raw.videoRate)) s.videoRate = raw.videoRate;
   }
   return s;

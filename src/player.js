@@ -2,6 +2,7 @@
 // ahead on the audio clock; visual callbacks fire when each sound plays.
 
 import { chunk, nextPos, clampBpm } from "./core/timeline.js";
+import { WORDS } from "./core/words.js";
 
 const LOOKAHEAD = 0.15; // seconds of audio scheduled ahead
 const TICK_MS = 25;
@@ -28,6 +29,7 @@ export class Player {
    * Start playing. `opts` are read live, so changes apply while playing:
    *   factor(): tempo factor, picked up at the next repetition
    *   loop(), guide(), click(), speak(): booleans (speak: recorded shouts)
+   *   words(): boolean — voice each word with its recorded clip as it plays
    *   countIn: boolean, read once at the start
    * `handlers`: onCount(n), onBeat(ev), onToken(ev), onHit(ev),
    *   onShout(ev), onStop()
@@ -104,6 +106,9 @@ export class Player {
   #fire(ev, at) {
     switch (ev.type) {
       case "hit":
+        // When the words are said along, each hit says its own syllable:
+        // "do" on the right bachi of Doko, "ko" on the left.
+        if (this.opts.words?.() && ev.say) this.synth.voice(ev.say, at, this.out);
         if (this.opts.guide()) this.synth.hit(ev, at, this.out);
         this.#later(() => this.h.onHit?.(ev), at - STICK_LEAD);
         break;
@@ -112,6 +117,12 @@ export class Player {
         this.#later(() => this.h.onBeat?.(ev), at);
         break;
       case "token":
+        // Words without hits (the rests Su and Sa) are said at their place;
+        // drum words are said by their hits, shouts by their own event.
+        if (this.opts.words?.()) {
+          const w = WORDS[ev.id];
+          if (!w.hits.length && w.group !== "shout") this.synth.voice(ev.id, at, this.out);
+        }
         this.#later(() => this.h.onToken?.(ev), at);
         break;
       case "shout": {

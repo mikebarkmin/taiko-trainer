@@ -29,3 +29,14 @@ test("every id the scripts look up exists in index.html", () => {
     for (const m of read(file).matchAll(/\$\("#([A-Za-z][\w-]*)"/g)) assert.ok(ids.has(m[1]), `#${m[1]} used in ${file}`);
   }
 });
+
+test("every voice clip is a real word with a non-empty file", async () => {
+  const { WORDS, PARTS } = await import("../src/core/words.js");
+  const { clips } = JSON.parse(read("sounds/voice/index.json"));
+  const expected = [...new Set([...Object.keys(WORDS), ...Object.values(PARTS).flat()])].sort();
+  assert.deepEqual(Object.keys(clips).sort(), expected);
+  for (const id of Object.keys(clips)) {
+    const clip = readFileSync(new URL(`sounds/voice/${id}.mp3`, root));
+    assert.ok(clip.length > 1000, `${id}.mp3 has actual audio`);
+  }
+});
