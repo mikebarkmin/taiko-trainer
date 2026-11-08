@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Taiko Trainer</title>
+  <meta name="description" content="Learn taiko rhythms with kuchi shōga: play along with common patterns at any tempo and build your own patterns and songs.">
+  <meta name="theme-color" content="#EEF1F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0F1326" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%236E4322'/%3E%3Ccircle cx='16' cy='16' r='11.5' fill='%23F0E5CC'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23CF3426'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="src/main.js"></script>
+</head>
+<body>
+  <header class="app-bar">
+    <div class="app-bar-inner">
+      <a class="brand" href="#play"><span class="stamp" aria-hidden="true">太鼓</span><span class="brand-name">Taiko Trainer</span></a>
+      <nav class="tabs" aria-label="Screens">
+        <a href="#play" data-tab="play">Play</a>
+        <a href="#library" data-tab="library">Patterns &amp; songs</a>
+        <a href="#words" data-tab="words">Words</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="banner" id="banner" role="status" hidden>
+      <p id="bannerText"></p>
+      <div class="banner-actions">
+        <button type="button" class="btn small primary" id="bannerAdd">Add to my patterns &amp; songs</button>
+        <button type="button" class="btn small" id="bannerDismiss">Dismiss</button>
+      </div>
+    </div>
+
+    <!-- ================= PLAY ================= -->
+    <main class="view" id="view-play">
+      <div class="play-grid">
+        <section class="stage" aria-label="Practice drum">
+          <div class="drum-card">
+            <div id="playDrum"></div>
+            <div class="now" aria-hidden="true">
+              <span class="now-kana" id="nowKana" lang="ja"></span>
+              <span class="now-ro" id="nowRo"></span>
+            </div>
+            <div class="beat-pulse" id="beatPulse" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <p class="drum-caption">Tap the drum to try it. Middle = Don / Kon, edge = Ka / Ra.<span class="keys"> Keys: <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd>, <kbd>Space</kbd> to play.</span></p>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="playHeading">
+          <h1 class="sr-only" id="playHeading">Play along</h1>
+          <div class="field">
+            <label for="itemSelect">What to play</label>
+            <select id="itemSelect"></select>
+            <p class="item-notes" id="itemNotes" hidden></p>
+            <p class="meta" id="itemInfo"></p>
+          </div>
+
+          <div class="tempo">
+            <div class="tempo-top">
+              <label for="bpmInput" class="lbl">Tempo</label>
+              <div class="tempo-ctrl">
+                <button type="button" class="btn round" id="bpmDown" aria-label="Slower by 5">−</button>
+                <input type="number" id="bpmInput" min="30" max="240" step="1" inputmode="numeric">
+                <span class="unit">bpm</span>
+                <button type="button" class="btn round" id="bpmUp" aria-label="Faster by 5">+</button>
+              </div>
+              <button type="button" class="btn small ghost" id="bpmReset">Reset</button>
+            </div>
+            <input type="range" id="bpmRange" min="30" max="240" step="1" aria-label="Tempo">
+            <div class="tempo-scale" aria-hidden="true"><span>30 slow</span><span>240 fast</span></div>
+            <p class="hint" id="tempoHint" hidden></p>
+          </div>
+
+          <div class="options">
+            <label class="check" for="optCountIn"><input type="checkbox" id="optCountIn"> Count in 1-2-3-4</label>
+            <label class="check" for="optLoop"><input type="checkbox" id="optLoop"> Repeat</label>
+            <label class="check" for="optGuide"><input type="checkbox" id="optGuide"> Guide drum sound</label>
+            <label class="check" for="optClick"><input type="checkbox" id="optClick"> Metronome click</label>
+            <label class="check" for="optSpeak"><input type="checkbox" id="optSpeak"> Say the shouts</label>
+          </div>
+
+          <div class="transport">
+            <button type="button" class="btn primary big" id="playBtn"></button>
+            <p class="status" id="playStatus" aria-live="polite"></p>
+          </div>
+
+          <div class="sheet" id="sheet" aria-label="The rhythm, in words"></div>
+          <p class="hint">Say the words out loud while you play. That’s how taiko players learn. Turn off the guide drum once you know the rhythm, and keep only the click.</p>
+        </section>
+      </div>
+    </main>
+
+    <!-- ================= LIBRARY ================= -->
+    <main class="view" id="view-library" hidden>
+      <div class="lib-grid">
+        <section class="lib-lists" aria-labelledby="libHeading">
+          <h1 class="sr-only" id="libHeading">Patterns and songs</h1>
+          <div class="notice" id="libMsg" role="status" hidden></div>
+
+          <div class="lib-head">
+            <h2>Patterns</h2>
+            <button type="button" class="btn primary small" id="newPattern">New pattern</button>
+          </div>
+          <ul class="items" id="patternList"></ul>
+
+          <div class="lib-head">
+            <h2>Songs</h2>
+            <button type="button" class="btn primary small" id="newSong">New song</button>
+          </div>
+          <ul class="items" id="songList"></ul>
+
+          <div class="io">
+            <h2>Move to another device</h2>
+            <p class="hint">Your patterns and songs are saved in this browser. Use Share on one item for a link, or move everything with a file.</p>
+            <div class="io-btns">
+              <button type="button" class="btn small" id="exportBtn">Export to a file</button>
+              <label class="btn small" for="importFile">Import a file</label>
+              <input type="file" id="importFile" accept="application/json,.json" class="sr-only">
+            </div>
+          </div>
+        </section>
+
+        <section class="editor" id="editor" aria-label="Editor"></section>
+      </div>
+    </main>
+
+    <!-- ================= WORDS ================= -->
+    <main class="view" id="view-words" hidden>
+      <div class="words-grid">
+        <aside class="stage" aria-label="Practice drum">
+          <div class="drum-card">
+            <div id="wordsDrum"></div>
+            <div class="legend" aria-hidden="true">
+              <span><i class="mk"></i>skin (kawa)</span>
+              <span><i class="mk rim"></i>rim (fuchi)</span>
+              <span><i class="mk soft"></i>soft</span>
+              <span><i class="mk rest"></i>rest</span>
+              <span><i class="mk shout"></i>shout</span>
+            </div>
+          </div>
+          <div class="detail" aria-live="polite">
+            <div class="d-head">
+              <span class="d-kana" id="dKana" lang="ja"></span>
+              <span class="d-ro" id="dRo"></span>
+              <span class="d-actions">
+                <button class="btn small" type="button" id="dSay">Say it</button>
+                <button class="btn small primary" type="button" id="dPlay">Play</button>
+              </span>
+            </div>
+            <p class="d-mean" id="dMean"></p>
+            <div id="dStrip"></div>
+            <dl class="facts" id="dFacts"></dl>
+            <p class="d-tip" id="dTip"></p>
+          </div>
+        </aside>
+
+        <div class="words-content">
+          <header class="words-intro">
+            <p class="eyebrow">Kuchi shōga · 口唱歌 · “mouth song”</p>
+            <h1>The drum words</h1>
+            <p class="lead">Taiko players learn every rhythm by saying it out loud first. Each word is an instruction: which hand, where to hit, how big, and for how long. Tap any word to see it on the drum and hear it.</p>
+            <p class="hint">These are the words most groups share. Groups differ a little, so if a teacher says it another way, follow the teacher.</p>
+          </header>
+
+          <section aria-labelledby="known-h">
+            <h2 id="known-h">The four words you already know</h2>
+            <div class="known" id="known"></div>
+          </section>
+
+          <section aria-labelledby="grid-h">
+            <h2 id="grid-h">Which hand, how big</h2>
+            <p class="hint">Almost every drum word fits this grid. Bigger hits use more of the arm. Two short words joined together make a pair, and the right hand usually goes first.</p>
+            <div class="grid-wrap"><div class="hand-grid" id="handGrid"></div></div>
+          </section>
+
+          <section aria-labelledby="all-h">
+            <h2 id="all-h">All 20 words</h2>
+            <p class="hint">Each card shows one beat split into two halves. A dot is a hit: <b>R</b> or <b>L</b> is the hand, a bigger dot is a bigger hit, round is the skin and square is the rim. A tail means “let it ring”.</p>
+            <div class="groups" id="wordGroups"></div>
+          </section>
+
+          <section aria-labelledby="marks-h">
+            <h2 id="marks-h">Small marks that change a word</h2>
+            <div class="marks">
+              <div class="mark"><span class="glyph" lang="ja">ン</span><div><h3>Ends in n: let it ring</h3><p><span lang="ja">ドン</span> Don rings out. <span lang="ja">ド</span> Do is short.</p></div></div>
+              <div class="mark"><span class="glyph" lang="ja">ッ</span><div><h3>Small tsu: stop it short</h3><p><span lang="ja">カッ</span> Kat is a Ka that stops sharply.</p></div></div>
+              <div class="mark"><span class="glyph" lang="ja">ー</span><div><h3>Long mark: hold it longer</h3><p><span lang="ja">ドーン</span> Dōn is a Don that rings for longer.</p></div></div>
+              <div class="mark"><span class="glyph" lang="ja">間</span><div><h3>Ma: the space between</h3><p>Silence is part of the music. Count rests as carefully as hits.</p></div></div>
+            </div>
+          </section>
+
+          <section aria-labelledby="gloss-h">
+            <h2 id="gloss-h">Words you’ll hear in class</h2>
+            <dl class="gloss" id="glossary"></dl>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <footer class="foot">
+      <p>Taiko Trainer runs in your browser and saves to this device. Sounds are made by the browser, so they only hint at a real drum.</p>
+    </footer>
+  </div>
+</body>
+</html>

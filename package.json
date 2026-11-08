@@ -1,0 +1,15 @@
+{
+  "name": "taiko-trainer",
+  "version": "0.1.0",
+  "description": "Learn taiko rhythms with kuchi shōga: play along with common patterns at any tempo and build your own songs.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
