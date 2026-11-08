@@ -2,7 +2,7 @@
 // to the home screen). Always tries the network first, so updates show up
 // right away when online. Videos and YouTube are never cached here.
 
-const CACHE = "taiko-trainer-v7";
+const CACHE = "taiko-trainer-v10";
 const SHELL = [
     "./",
     "index.html",
@@ -38,8 +38,10 @@ const SHELL = [
     "sounds/voice/yoisho.mp3",
     "sounds/voice/yo.mp3",
     "src/audio.js",
+    "src/core/edit.js",
     "src/core/lessons.js",
     "src/core/library.js",
+    "src/core/onsets.js",
     "src/core/share.js",
     "src/core/timeline.js",
     "src/core/util.js",
@@ -50,12 +52,15 @@ const SHELL = [
     "src/lang/en.js",
     "src/main.js",
     "src/media.js",
+    "src/mic.js",
     "src/player.js",
     "src/store.js",
     "src/ui/lane.js",
     "src/ui/lesson-editor.js",
     "src/ui/lesson-player.js",
     "src/ui/library.js",
+    "src/ui/mic-panel.js",
+    "src/ui/overlay.js",
     "src/ui/play.js",
     "src/ui/render.js",
     "src/ui/words.js",

@@ -284,6 +284,7 @@ kbd { font-family: var(--font-body); font-weight: 800; font-size: .78rem; border
 .ed-empty { display: flex; flex-direction: column; gap: 10px; color: var(--muted); }
 .ed-empty h2 { color: var(--ink); }
 .ed { display: flex; flex-direction: column; gap: 16px; }
+.ed-drum-wrap { max-width: 340px; margin-inline: auto; }
 .ed-top { display: flex; flex-direction: column; gap: 4px; }
 .ed-sub { margin-top: 4px; }
 .ed .palette { margin-top: 4px; }
@@ -383,9 +384,160 @@ kbd { font-family: var(--font-body); font-weight: 800; font-size: .78rem; border
 }
 
 /* ---------- video ---------- */
-.media-host { width: 100%; }
+.media-host { width: 100%; position: relative; }
+.media-host.mirrored .video-box { transform: scaleX(-1); } /* players face you: follow like in a mirror */
 .video-box { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--radius); overflow: hidden; }
 .video-box video, .video-box iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #000; }
+
+/* Studio view: the video fills the page; only transport and options stay.
+   Unlike the browser's fullscreen, the page still draws the video, so the
+   mirror keeps working. */
+body.studio .app-bar, body.studio .foot, body.studio .banner, body.studio .stage, body.studio #view-play .panel > .field { display: none; }
+body.studio .page { padding: 12px; gap: 0; }
+body.studio .play-grid { display: block; }
+body.studio #view-play .panel { display: flex; flex-direction: column; height: calc(100vh - 24px); height: calc(100dvh - 24px); }
+body.studio #modeVideo { flex: 1; min-height: 0; }
+body.studio #modeVideo .media-host { flex: 1; min-height: 0; display: flex; }
+body.studio #modeVideo .video-box { flex: 1; aspect-ratio: auto; }
+body.studio #modeVideo .part { display: none; }
+
+/* Studio view in the strike editor: drum along on the keyboard. The tools
+   step aside; the video fills the screen with the timeline docked below it
+   (or above: .lane-top), so the timeline never covers the players. */
+body.studio .le-top, body.studio .le-side, body.studio .le-selected,
+body.studio .le-notes, body.studio .le-source, body.studio .le-lane > .hint,
+body.studio #leChange { display: none; }
+body.studio #view-lesson:not([hidden]) { display: flex; flex-direction: column; gap: 10px; height: calc(100vh - 24px); height: calc(100dvh - 24px); }
+body.studio .le-grid { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+body.studio .le-video { flex: 1; min-height: 0; gap: 8px; }
+body.studio .le-video .media-host { flex: 1; min-height: 0; display: flex; }
+body.studio .le-video .video-box, body.studio .le-video .video-empty { flex: 1; aspect-ratio: auto; height: auto; }
+body.studio .le-lane { flex: none; gap: 4px; }
+body.studio #view-lesson.lane-top .le-lane { order: -1; }
+body.studio .le-lane .lane-pos { display: inline-flex; }
+
+/* The key strip (studio only): what D F J K add right now, flashing on each tap */
+.le-keys { display: none; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+body.studio .le-keys { display: flex; }
+.le-key {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border-radius: 999px;
+  color: var(--on-accent); background: var(--right); font-size: .85rem;
+}
+.le-key.L { background: var(--left); }
+.le-key.rim { border-radius: 6px; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--on-accent) 45%, transparent); }
+.le-key kbd { background: transparent; color: inherit; border-color: currentColor; }
+.le-badge, .le-keys .badge {
+  display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: .78rem; font-weight: 800;
+  border: 1px solid var(--line); color: var(--muted);
+}
+.le-keys .badge.rec { background: var(--don); border-color: var(--don); color: var(--on-accent); animation: rec-blink 1.2s ease-in-out infinite; }
+@keyframes rec-blink { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .le-keys .badge.rec { animation: none; } }
+.le-keys-list { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
+.le-keys-list kbd { margin-right: 6px; }
+.le-loop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.le-loop .meta { min-width: 9em; }
+.le-keys-help { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); font-size: .82rem; margin-left: 6px; }
+.le-keys .msg { margin-left: auto; font-size: .85rem; }
+
+/* In studio mode the timeline overlays the video as a strip at its top or
+   bottom: the views move the lane box into the media host (see setStudio),
+   the arrow button there picks the end. */
+.lane-box.overlay {
+  position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 2;
+  margin: 0; padding: 4px 12px 8px;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  backdrop-filter: blur(3px);
+  border-radius: var(--radius);
+}
+.lane-box.overlay.top { top: 10px; bottom: auto; }
+.lane-pos { display: none; }
+.lane-box.overlay .lane-pos { display: inline-flex; }
+/* ---------- a real drum (mic-panel.js) ---------- */
+.mic-host { margin-top: 12px; text-align: left; }
+.mic-panel .row { align-items: center; }
+.mic-meter { display: inline-block; width: 140px; height: 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.mic-meter span { display: block; height: 100%; background: var(--shout); transform-origin: left; transform: scaleX(0); transition: transform 60ms linear; }
+.mic-dot { display: none; width: 8px; height: 8px; border-radius: 50%; background: var(--don); margin-left: 6px; vertical-align: middle; }
+.mic-panel.listening .mic-dot { display: inline-block; }
+.mic-sens input { width: 140px; }
+
+/* ---------- strikes on the video (overlay.js) ---------- */
+.ovl { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; border-radius: var(--radius); }
+.ovl-strip {
+  --h: clamp(44px, 11%, 68px); --ring: 16%;
+  position: absolute; top: 10px; left: 10px; right: 10px; height: var(--h);
+  border-radius: 999px; background: rgba(8, 10, 22, .45); backdrop-filter: blur(2px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+}
+.ovl-ring {
+  position: absolute; left: var(--ring); top: 50%; width: calc(var(--h) - 10px); aspect-ratio: 1;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .85), 0 0 12px rgba(255, 255, 255, .35);
+}
+.ovl-notes, .ovl-fx { position: absolute; inset: 0; }
+.ovl-note {
+  position: absolute; left: 0; top: 50%; width: calc(var(--h) - 18px); aspect-ratio: 1; border-radius: 50%;
+  display: grid; place-items: center; background: var(--don); color: #fff; will-change: transform;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .9), 0 2px 6px rgba(0, 0, 0, .4);
+}
+.ovl-note i { font-style: normal; font-weight: 800; font-size: .8rem; line-height: 1; }
+.ovl-note.L { background: var(--ka); }
+.ovl-note.rim { border-radius: 28%; background: transparent; box-shadow: inset 0 0 0 5px var(--don), 0 0 0 2px rgba(255, 255, 255, .9); text-shadow: 0 1px 3px #000; }
+.ovl-note.rim.L { box-shadow: inset 0 0 0 5px var(--ka), 0 0 0 2px rgba(255, 255, 255, .9); }
+.ovl-note.medium { width: calc(var(--h) - 26px); }
+.ovl-note.small { width: calc(var(--h) - 34px); }
+.ovl-note.small i { display: none; }
+.ovl-note small { /* the word in latin letters, under the note */
+  position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%); white-space: nowrap;
+  font-weight: 800; font-size: .72rem; color: #fff; text-shadow: 0 0 2px #000, 0 1px 4px #000;
+}
+.ovl-note.past small { display: none; }
+.ovl-note.shout {
+  width: auto; aspect-ratio: auto; padding: 3px 10px; border-radius: 999px;
+  background: var(--shout); color: #22180A; font-weight: 800; font-size: .8rem;
+}
+.ovl-note.past { opacity: .3; }
+.ovl-burst { position: absolute; left: var(--ring); top: 50%; transform: translate(-50%, -50%); }
+.ovl-burst::before { /* a ring that flies outwards */
+  content: ""; position: absolute; left: 50%; top: 50%; width: calc(var(--h) - 10px); aspect-ratio: 1; border-radius: 50%;
+  transform: translate(-50%, -50%); border: 4px solid var(--don); animation: ovl-ring .45s ease-out forwards;
+}
+.ovl-burst.L::before { border-color: var(--ka); }
+.ovl-burst.shout::before { border-color: var(--shout); }
+.ovl-burst b {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); white-space: nowrap;
+  font-family: var(--font-display); font-size: calc(var(--h) * .62); color: #fff;
+  text-shadow: 0 0 2px #000, 0 2px 10px rgba(0, 0, 0, .7); animation: ovl-pop .55s ease-out forwards;
+  display: flex; flex-direction: column; align-items: center; line-height: 1;
+}
+.ovl-burst b small { font-family: var(--font-body); font-size: .4em; font-weight: 800; margin-top: 4px; }
+@keyframes ovl-ring { from { opacity: 1; } to { opacity: 0; transform: translate(-50%, -50%) scale(1.9); } }
+@keyframes ovl-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); }
+  25% { opacity: 1; transform: translate(-50%, -95%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -140%) scale(1); }
+}
+.ovl-tap {
+  position: absolute; left: var(--ring); top: 50%; width: calc(var(--h) - 10px); aspect-ratio: 1; border-radius: 50%;
+  transform: translate(-50%, -50%); background: color-mix(in srgb, var(--don) 60%, transparent); animation: ovl-tap .3s ease-out forwards;
+}
+.ovl-tap.L { background: color-mix(in srgb, var(--ka) 60%, transparent); }
+.ovl-tap.rim { border-radius: 28%; }
+@keyframes ovl-tap { from { opacity: 1; } to { opacity: 0; transform: translate(-50%, -50%) scale(1.35); } }
+.ovl-verdict {
+  position: absolute; left: var(--ring); top: calc(100% + 28px); transform: translateX(-50%); white-space: nowrap;
+  padding: 2px 10px; border-radius: 999px; font-weight: 800; font-size: .85rem; color: #fff; background: rgba(8, 10, 22, .7);
+  animation: ovl-verdict .85s ease-out forwards;
+}
+.ovl-verdict.perfect { background: var(--shout); color: #22180A; }
+.ovl-verdict.early { background: var(--ka); }
+.ovl-verdict.late { background: var(--don); }
+@keyframes ovl-verdict { 0% { opacity: 0; transform: translate(-50%, -4px); } 15% { opacity: 1; transform: translate(-50%, 0); } 75% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ovl-burst::before, .ovl-burst b, .ovl-tap, .ovl-verdict { animation-duration: .01s; }
+}
+
 .video-empty {
   display: grid; place-items: center; text-align: center; width: 100%; aspect-ratio: 16 / 9; padding: 16px;
   background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line); border-radius: var(--radius); font-weight: 700;
@@ -404,28 +556,46 @@ kbd { font-family: var(--font-body); font-weight: 800; font-size: .78rem; border
 .lane { display: grid; grid-template-columns: 46px minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .lane-labels { position: relative; border-right: 1px solid var(--line); font-size: .7rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .lane-labels span { position: absolute; left: 6px; }
-.lane-labels span:nth-child(1) { top: 12px; }
-.lane-labels span:nth-child(2) { top: 52px; }
-.lane-labels span:nth-child(3) { top: 92px; }
-.lane-scroll { position: relative; height: 150px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.lane-labels::before { content: ""; position: absolute; inset: 0 0 auto; height: 22px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.lane-labels span:nth-child(1) { top: 34px; }
+.lane-labels span:nth-child(2) { top: 74px; }
+.lane-labels span:nth-child(3) { top: 114px; }
+.lane-scroll { position: relative; height: 172px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
 .lane-inner { position: relative; height: 100%; min-width: 100%; cursor: crosshair; }
 .lane-range { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--shout) 20%, transparent); border-inline: 2px solid var(--shout); pointer-events: none; }
+.lane-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--ink) 8%, transparent); border-inline: 2px solid var(--ink); pointer-events: none; }
+.lane-ruler { position: absolute; inset: 0 0 auto; height: 22px; background: var(--surface-2); border-bottom: 1px solid var(--line); cursor: ew-resize; }
+.lane-inner.scrubbing, .lane-inner.scrubbing * { cursor: ew-resize !important; }
 .lane-ticks { position: absolute; inset: 0; pointer-events: none; }
+.lane-wave { position: absolute; top: 22px; bottom: 0; height: calc(100% - 22px); pointer-events: none; }
+.lane-wave path { fill: color-mix(in srgb, var(--muted) 30%, transparent); }
+.lane-hits { position: absolute; inset: 0; pointer-events: none; }
+.lane-hits .hit { position: absolute; top: 22px; height: 8px; border-left: 2px solid color-mix(in srgb, var(--shout) 80%, transparent); }
 .tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); }
 .tick.minor { border-left-style: dashed; opacity: .6; }
-.tick span { position: absolute; bottom: 3px; left: 4px; font-size: .7rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.lane-marks { position: absolute; inset: 0; }
-.lane-head { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; margin-left: -1px; background: var(--ink); pointer-events: none; will-change: transform; }
+.tick.bar { border-left: 2px solid var(--ink); }
+.tick.bar span { font-weight: 700; color: var(--ink); }
+.tick span { position: absolute; top: 4px; left: 4px; font-size: .7rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lane-marks { position: absolute; inset: 0; pointer-events: none; }
+.lane-marks .stk { pointer-events: auto; }
+.lane-head { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; margin-left: -1px; background: var(--ink); pointer-events: none; will-change: transform; z-index: 3; }
+.lane-head::before { /* the handle in the ruler */
+  content: ""; position: absolute; top: 0; left: -6px; width: 14px; height: 14px;
+  background: var(--ink); clip-path: polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%);
+}
 .stk {
   position: absolute; transform: translateX(-50%); width: 24px; height: 24px; padding: 0; border: 0;
   display: grid; place-items: center; border-radius: 50%; font: 800 .7rem/1 var(--font-body); color: var(--on-accent);
   background: var(--right);
 }
+.lane.editable .stk { cursor: grab; touch-action: none; }  /* drag moves a strike in time */
+.lane.editable .stk:active { cursor: grabbing; }
+.stk.drag { outline: 2px solid var(--ink); outline-offset: 2px; }
 .stk.L { background: var(--left); }
 .stk i { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: .62rem; color: var(--muted); white-space: nowrap; pointer-events: none; }
-.stk.shout { top: 8px; background: var(--shout); color: var(--on-shout); border-radius: 999px; width: 22px; }
-.stk.rim { top: 48px; border-radius: 5px; }
-.stk.center { top: 88px; }
+.stk.shout { top: 30px; background: var(--shout); color: var(--on-shout); border-radius: 999px; width: 22px; }
+.stk.rim { top: 70px; border-radius: 5px; }
+.stk.center { top: 110px; }
 .stk.medium { width: 20px; height: 20px; }
 .stk.small { width: 15px; height: 15px; font-size: .55rem; }
 .stk.center.small.R { background: color-mix(in srgb, var(--right) 50%, var(--surface)); color: var(--ink); }
@@ -433,8 +603,13 @@ kbd { font-family: var(--font-body); font-weight: 800; font-size: .78rem; border
 .stk.rim.medium, .stk.rim.small { margin-top: 2px; }
 .stk.center.medium, .stk.center.small { margin-top: 2px; }
 .stk.cur { box-shadow: 0 0 0 3px var(--shout); }
-.stk.sel { box-shadow: 0 0 0 3px var(--ink); z-index: 2; }
-.lane.editable .stk { cursor: pointer; }
+.stk.sel, .stk.pre { box-shadow: 0 0 0 3px var(--ink); z-index: 2; }
+.stk.new { animation: stk-pop .35s ease-out; z-index: 2; }
+@keyframes stk-pop {
+  from { transform: translateX(-50%) scale(1.7); box-shadow: 0 0 0 6px color-mix(in srgb, var(--shout) 70%, transparent); }
+  to { transform: translateX(-50%) scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .stk.new { animation: none; } }
 .lane.editable .stk:hover { filter: brightness(1.1); }
 
 /* ---------- strike editor ---------- */

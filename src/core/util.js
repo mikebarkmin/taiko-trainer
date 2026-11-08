@@ -44,11 +44,12 @@ export function fromBase64Url(code) {
 
 /** 83.456 → "1:23.4" */
 export function fmtClock(seconds, digits = 1) {
-  const t = Math.max(0, Number(seconds) || 0);
-  const m = Math.floor(t / 60);
-  const s = t - m * 60;
-  const whole = Math.floor(s);
-  const frac = digits ? (s - whole).toFixed(digits).slice(1) : "";
+  // round once, in whole units of the last digit, so 2.996 becomes 0:03.00 (not 0:02.00)
+  const unit = 10 ** digits;
+  const n = Math.round(Math.max(0, Number(seconds) || 0) * unit);
+  const m = Math.floor(n / (60 * unit));
+  const whole = Math.floor(n / unit) % 60;
+  const frac = digits ? `.${String(n % unit).padStart(digits, "0")}` : "";
   return `${m}:${String(whole).padStart(2, "0")}${frac}`;
 }
 

@@ -8,6 +8,7 @@ import {
 import { normalizeLesson, describeVideo, packageHeader, readPackageHeader, PACKAGE_HEADER } from "../core/lessons.js";
 import { encodeShare, shareLink, LONG_LINK } from "../core/share.js";
 import { fmtClock } from "../core/util.js";
+import { createDrum } from "../drum.js";
 import { getVideo, putVideo, deleteVideo, hasVideo, storedVideoIds, storageSummary } from "../videostore.js";
 import { $, $$, esc, tokens, palette, itemOptions } from "./render.js";
 import { t, quote } from "../i18n.js";
@@ -20,6 +21,8 @@ export function mountLibrary(app) {
   };
   let editing = null; // {kind, draft, isNew, dirty}
   let listening = false;
+  /** The drum on the pattern editor: animates words as they play or are tapped. */
+  let editorDrum = null;
 
   // ---------- messages ----------
   function say(textValue, { error = false, link = "" } = {}) {
@@ -216,6 +219,7 @@ export function mountLibrary(app) {
     if (!force && editing && editing.dirty && !confirm(t("lib.unsaved"))) return;
     stopListening();
     editing = null;
+    editorDrum = null;
     els.editor.innerHTML = emptyEditor();
     renderLists();
   }
@@ -259,6 +263,7 @@ export function mountLibrary(app) {
         <p class="hint">${esc(t("ed.wordsHint"))}</p>
         <div class="palette">${palette(PALETTE)}<span class="pal-break"></span><button class="pal pal-undo" type="button" id="edUndo">${esc(t("ed.removeLast"))}</button></div>
       </div>
+      <div class="ed-drum-wrap"><div id="edDrumEl"></div></div>
       <div class="ed-preview" id="edPreview" aria-live="polite"></div>
       <div class="row">
         <div class="field small">
@@ -280,6 +285,7 @@ export function mountLibrary(app) {
       </div>
       ${actionsHTML("Pattern")}
     </form>`;
+    editorDrum = createDrum($("#edDrumEl", els.editor));
     renderPatternPreview();
   }
 
@@ -473,7 +479,10 @@ export function mountLibrary(app) {
         $$(".now", els.editor).forEach((el) => el.classList.remove("now"));
         if (editing?.kind === "pattern") $(`#edPreview .tok[data-ti="${ev.ti}"]`, els.editor)?.classList.add("now");
         else $(`.sec-row[data-i="${r.sections[ev.si].index}"]`, els.editor)?.classList.add("now");
+        editorDrum?.setWord(WORDS[ev.id].kana);
       },
+      onHit: (ev) => editorDrum?.hit(ev, { lead: true }),
+      onShout: (ev) => editorDrum?.shout(ev.id),
       onStop() {
         listening = false;
         $$(".now", els.editor).forEach((el) => el.classList.remove("now"));
@@ -533,12 +542,12 @@ export function mountLibrary(app) {
     if (target.closest("#edListen")) return listen();
     if (editing.kind === "pattern") {
       const add = target.closest("[data-add]");
-      if (add) { addWord(add.dataset.add); app.playWord(null, add.dataset.add, editing.draft.drum); return; }
+      if (add) { addWord(add.dataset.add); app.playWord(editorDrum, add.dataset.add, editing.draft.drum); return; }
       if (target.closest("#edUndo")) return removeLastWord();
       const tok = target.closest("#edPreview .tok");
       if (tok) {
         const { ids } = parseWords(editing.draft.words);
-        app.playWord(null, ids[+tok.dataset.ti], editing.draft.drum);
+        app.playWord(editorDrum, ids[+tok.dataset.ti], editing.draft.drum);
       }
       return;
     }

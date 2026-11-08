@@ -2,13 +2,14 @@
 // timeline follow it, and an optional guide drum sounds every strike.
 
 import { WORDS } from "../core/words.js";
-import { strikeWord, strikeHit } from "../core/lessons.js";
+import { strikeWord, strikeHit, lowerBound } from "../core/lessons.js";
 import { fmtClock, parseClock } from "../core/util.js";
 import { getVideo, putVideo } from "../videostore.js";
 import { html5Media, youtubeMedia } from "../media.js";
 import { VideoSync } from "../videosync.js";
 import { speak } from "../audio.js";
 import { createLane } from "./lane.js";
+import { createOverlay, judge } from "./overlay.js";
 import { $, esc } from "./render.js";
 import { t, quote } from "../i18n.js";
 
@@ -17,13 +18,14 @@ const sourceKey = (l) => (l?.video ? `${l.id}|${JSON.stringify(l.video)}` : "");
 export function createLessonPlayer(app, { drum, setNow }) {
   const els = {
     host: $("#pvMedia"), note: $("#pvNote"), file: $("#pvFile"), fileLabel: $("#pvFileLabel"),
-    speed: $("#pvSpeed"), sound: $("#pvSound"), guide: $("#pvGuide"), loop: $("#pvLoop"), speak: $("#pvSpeak"),
+    speed: $("#pvSpeed"), sound: $("#pvSound"), guide: $("#pvGuide"), loop: $("#pvLoop"), speak: $("#pvSpeak"), mirror: $("#pvMirror"),
     from: $("#pvFrom"), to: $("#pvTo"), clearPart: $("#pvClearPart"), play: $("#pvPlay"), status: $("#pvStatus"),
-    edit: $("#pvEdit"),
+    edit: $("#pvEdit"), studio: $("#pvStudio"), lanePos: $("#pvLanePos"), overlay: $("#pvOverlay"),
   };
   const S = app.settings;
   const sync = new VideoSync(app.synth);
   const lane = createLane($("#pvLane"), { zoom: 180, onSeek: (t) => media?.seek(t) });
+  const overlay = createOverlay();
 
   let lesson = null;
   let media = null;
@@ -57,6 +59,7 @@ export function createLessonPlayer(app, { drum, setNow }) {
     lesson = l;
     els.edit.href = `#lesson=${l.id}`;
     lane.setStrikes(l.strikes);
+    overlay.setStrikes(l.strikes);
     if (sourceKey(l) === key && media) {
       sync.setStrikes(l.strikes);
       return;
@@ -93,6 +96,7 @@ export function createLessonPlayer(app, { drum, setNow }) {
     try {
       const onState = () => renderButton();
       media = v.type === "youtube" ? youtubeMedia(els.host, v.videoId, { onState }) : html5Media(els.host, src || v.url, { onState });
+      overlay.attach(els.host); // the player replaced the host's content
       await media.ready;
       if (my !== token) return;
       media.setRate(S.videoRate);
@@ -157,6 +161,7 @@ export function createLessonPlayer(app, { drum, setNow }) {
       if (media) {
         const at = media.time;
         lane.setTime(at, !media.paused);
+        overlay.setTime(at, !media.paused, media.rate);
         els.status.textContent = `${fmtClock(at, 1)} / ${fmtClock(media.duration || lesson?.video?.duration || 0, 1)}${S.videoRate !== 1 ? ` · ${t("pv.speedNote", { rate: S.videoRate })}` : ""}`;
       }
       raf = requestAnimationFrame(frame);
@@ -182,11 +187,53 @@ export function createLessonPlayer(app, { drum, setNow }) {
   els.guide.checked = S.videoGuide;
   els.loop.checked = S.loop;
   els.speak.checked = S.speak;
+  els.mirror.checked = S.videoMirror;
+  els.overlay.checked = S.videoOverlay;
+  overlay.setVisible(S.videoOverlay);
+  els.overlay.addEventListener("change", () => { S.videoOverlay = els.overlay.checked; app.saveSettings(); overlay.setVisible(S.videoOverlay); });
+  const applyMirror = () => els.host.classList.toggle("mirrored", !!S.videoMirror);
+  applyMirror();
   els.speed.addEventListener("change", () => { S.videoRate = Number(els.speed.value); app.saveSettings(); media?.setRate(S.videoRate); });
   els.sound.addEventListener("change", () => { S.videoSound = els.sound.checked; app.saveSettings(); media?.setMuted(!S.videoSound); });
   els.guide.addEventListener("change", () => { S.videoGuide = els.guide.checked; app.saveSettings(); });
   els.loop.addEventListener("change", () => { S.loop = els.loop.checked; app.saveSettings(); });
   els.speak.addEventListener("change", () => { S.speak = els.speak.checked; app.saveSettings(); });
+  els.mirror.addEventListener("change", () => { S.videoMirror = els.mirror.checked; app.saveSettings(); applyMirror(); });
+  // Studio view: the video fills the page (unlike fullscreen, the mirror
+  // still works, because the page itself keeps drawing the video). The
+  // timeline moves into the video as a strip along the bottom.
+  let studioSpot = null; // where the timeline sits outside studio mode
+  const placeTimeline = () => {
+    const box = $("#modeVideo .lane-box");
+    if (!box) return;
+    box.classList.toggle("top", S.timelineTop);
+    els.lanePos.textContent = S.timelineTop ? "↓" : "↑";
+    els.lanePos.setAttribute("aria-label", t(S.timelineTop ? "lane.bottom" : "lane.top"));
+  };
+  let studioOn = false; // the body class is shared with the editor: only clear what we set
+  const setStudio = (on) => {
+    if (on === studioOn) return;
+    studioOn = on;
+    document.body.classList.toggle("studio", on);
+    els.studio.textContent = t(on ? "pv.studioExit" : "pv.studio");
+    els.studio.setAttribute("aria-pressed", String(on));
+    const box = $("#modeVideo .lane-box");
+    if (box) {
+      if (on) {
+        studioSpot = { parent: box.parentElement, next: box.nextElementSibling };
+        els.host.appendChild(box);
+        box.classList.add("overlay");
+        placeTimeline();
+      } else if (studioSpot) {
+        studioSpot.parent.insertBefore(box, studioSpot.next);
+        box.classList.remove("overlay");
+        studioSpot = null;
+      }
+    }
+  };
+  els.studio.addEventListener("click", () => setStudio(!studioOn));
+  els.lanePos.addEventListener("click", () => { S.timelineTop = !S.timelineTop; app.saveSettings(); placeTimeline(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && studioOn) setStudio(false); });
   els.play.addEventListener("click", toggle);
   els.from.addEventListener("change", () => setRangeFrom("start", els.from.value));
   els.to.addEventListener("change", () => setRangeFrom("end", els.to.value));
@@ -204,17 +251,46 @@ export function createLessonPlayer(app, { drum, setNow }) {
     else if (!stored) note(esc(t("pv.notStored")), true);
   });
 
+  /**
+   * You hit the drum (keys, on screen or a real one) while a lesson video
+   * plays: flash it on the overlay with a verdict against the nearest
+   * strike of the same kind (`where` null: any kind, for a real drum whose
+   * rim and skin are not told apart). Taps further than 0.3 s from any
+   * strike get no verdict. `ago`: seconds since the hit really happened.
+   */
+  function tap(hand, where, ago = S.tapDelay / 1000) {
+    if (!media || !lesson || media.paused) return;
+    const rate = media.rate || 1;
+    const vt = media.time - ago * rate;
+    const list = lesson.strikes;
+    const i = lowerBound(list, vt);
+    let best = null;
+    for (let j = Math.max(0, i - 4); j < Math.min(list.length, i + 4); j++) {
+      const s = list[j];
+      if (s.shout || (where && s.where !== where)) continue;
+      if (!best || Math.abs(s.t - vt) < Math.abs(best.t - vt)) best = s;
+    }
+    const dt = best ? (vt - best.t) / rate : Infinity;
+    overlay.tap(hand, where || best?.where || "center", Math.abs(dt) <= 0.3 ? judge(dt) : null);
+  }
+
   return {
     load,
     toggle,
+    tap,
     /** The Play screen is shown or hidden. */
     setActive(on) {
       active = on;
       if (on) startLoop();
-      else { cancelAnimationFrame(raf); media?.pause(); }
+      else {
+        cancelAnimationFrame(raf);
+        media?.pause();
+        setStudio(false); // studio belongs to the video view
+      }
     },
     unload() {
       cancelAnimationFrame(raf);
+      setStudio(false);
       teardown(true);
       lesson = null;
       els.host.replaceChildren();

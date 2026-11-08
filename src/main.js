@@ -3,11 +3,13 @@ import { makeLibrary, importData } from "./core/library.js";
 import { decodeShare } from "./core/share.js";
 import { Synth } from "./audio.js";
 import { Player } from "./player.js";
+import { MicDrum } from "./mic.js";
 import { loadCustom, saveCustom, loadSettings, saveSettings } from "./store.js";
 import { mountPlay } from "./ui/play.js";
 import { mountLibrary, summary } from "./ui/library.js";
 import { mountWords } from "./ui/words.js";
 import { mountLessonEditor } from "./ui/lesson-editor.js";
+import { mountMicPanel } from "./ui/mic-panel.js";
 import { $, $$ } from "./ui/render.js";
 import { t, quote, lang, setLang, translatePage } from "./i18n.js";
 
@@ -37,6 +39,7 @@ let active = "";
 
 const app = {
   synth,
+  mic: new MicDrum(synth, settings, () => saveSettings(settings)),
   player,
   settings,
   lib: () => lib,
@@ -152,9 +155,21 @@ function readShareLink() {
 $("#bannerDismiss").addEventListener("click", () => { $("#banner").hidden = true; });
 
 // ---------- keyboard ----------
+// Clicking an embedded YouTube player moves keyboard focus into its iframe,
+// where this page no longer hears D F J K, Space or Backspace. Take focus
+// straight back: the click itself still reaches YouTube's controls.
+addEventListener("blur", () => setTimeout(() => {
+  const f = document.activeElement;
+  if (f?.tagName === "IFRAME" && f.closest(".video-box")) f.closest(".video-box").focus({ preventScroll: true });
+}));
 document.addEventListener("keydown", (e) => {
   const t = e.target;
-  if (t?.closest?.("input, textarea, select, [contenteditable]")) return;
+  // Text-like fields keep their keys to themselves. Checkboxes and radios
+  // do not: after toggling one, the strike keys must keep working (and
+  // Space goes back to play/pause instead of re-toggling the checkbox).
+  const box = t?.matches?.('input[type="checkbox"], input[type="radio"]');
+  if (t?.closest?.("input, textarea, select, [contenteditable]") && !box) return;
+  if (box) e.preventDefault(); // keep the browser from toggling with Space
   if (active === "lesson") { views.lesson.onKey(e); return; }
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   const keys = { d: ["L", "rim"], f: ["L", "center"], j: ["R", "center"], k: ["R", "rim"] };
@@ -162,7 +177,8 @@ document.addEventListener("keydown", (e) => {
   const drum = views[active]?.drum;
   if (hit && drum) {
     e.preventDefault();
-    app.freeHit(drum, hit[0], hit[1]);
+    if (views[active].tap) views[active].tap(hit[0], hit[1]);
+    else app.freeHit(drum, hit[0], hit[1]);
     return;
   }
   if (e.key === " " && active === "play" && !t?.closest?.("button, a, summary, video")) {
@@ -184,6 +200,13 @@ for (const ev of ["pointerdown", "touchend", "keydown"]) document.addEventListen
 
 // ---------- start ----------
 views = { play: mountPlay(app), library: mountLibrary(app), words: mountWords(app), lesson: mountLessonEditor(app) };
+
+// ---------- a real drum (microphone) ----------
+// Hits go to the screen in front: the editor records them, the Play
+// screen shows them on its drum and judges them against a lesson video.
+mountMicPanel($("#pvMic"), app);
+app.mic.listen("hit", (h) => views[active]?.drumHit?.(h));
+document.addEventListener("visibilitychange", () => { if (document.hidden) app.mic.stop(); });
 readShareLink();
 show();
 window.addEventListener("hashchange", () => { readShareLink(); show(); });

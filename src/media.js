@@ -84,6 +84,7 @@ function loadYouTube() {
 export function youtubeMedia(host, videoId, { onState = () => {} } = {}) {
   const wrap = document.createElement("div");
   wrap.className = "video-box yt";
+  wrap.tabIndex = -1; // focus lands here when it is taken back from the iframe (see main.js)
   const slot = document.createElement("div");
   wrap.append(slot);
   host.replaceChildren(wrap);
@@ -100,7 +101,7 @@ export function youtubeMedia(host, videoId, { onState = () => {} } = {}) {
       videoId,
       width: "100%",
       height: "100%",
-      playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+      playerVars: { playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1 }, // the page owns the keys (F is a strike, not fullscreen)
       events: {
         onReady: () => resolve(),
         onStateChange: (e) => { state = e.data; onState("state"); },

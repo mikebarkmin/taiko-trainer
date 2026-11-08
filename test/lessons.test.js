@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   strikeWord, normalizeLesson, normalizeStrikes, lowerBound, mergeStrikes, shiftStrikes, patternStrikes,
   youtubeId, sourceFromLink, encodeStrikes, decodeStrikes, packageHeader, readPackageHeader, PACKAGE_HEADER,
+  snapToGrid,
 } from "../src/core/lessons.js";
 import { makeLibrary, importData, shareData, exportData, normalizeCustom } from "../src/core/library.js";
 import { encodeShare, decodeShare } from "../src/core/share.js";
@@ -75,6 +76,22 @@ test("lessons are validated", () => {
   assert.deepEqual(l.strikes, []);
   const f = normalizeLesson({ id: "v-1", video: { type: "file", name: "a.mp4", size: "12", mime: "video/mp4", duration: 3.5 } });
   assert.deepEqual(f.video, { type: "file", name: "a.mp4", size: 12, mime: "video/mp4", duration: 3.5 });
+  assert.equal(f.grid, null, "no grid by default");
+});
+
+test("the bar grid survives a save and snaps to half-beats", () => {
+  const l = normalizeLesson({ name: "L", grid: { start: "1.2", bpm: "90" } });
+  assert.deepEqual(l.grid, { start: 1.2, bpm: 90 });
+  assert.equal(normalizeLesson({ grid: { start: -1, bpm: 90 } }).grid, null);
+  assert.equal(normalizeLesson({ grid: { start: 0, bpm: 400 } }).grid, null);
+  assert.equal(normalizeLesson({ grid: "junk" }).grid, null);
+  // 90 bpm: half a beat is 1/3 s, the grid starts at 1.2 and extends backwards
+  const near = (x, y) => Math.abs(x - y) < 1e-9;
+  assert.ok(near(snapToGrid(l.grid, 1.3), 1.2));
+  assert.ok(near(snapToGrid(l.grid, 1.8), 1.2 + 2 / 3));
+  assert.ok(near(snapToGrid(l.grid, 0.1), 0.2));
+  assert.equal(snapToGrid(l.grid, -0.5), 0, "never snaps before zero");
+  assert.equal(snapToGrid(null, 1.45), 1.45);
 });
 
 test("compact strike text round-trips", () => {
@@ -114,6 +131,9 @@ test("export includes lessons; lesson file header", () => {
 test("clock format", () => {
   assert.equal(fmtClock(83.456), "1:23.5");
   assert.equal(fmtClock(5, 0), "0:05");
+  assert.equal(fmtClock(2.996, 2), "0:03.00"); // the rounding carries into the seconds
+  assert.equal(fmtClock(59.97, 1), "1:00.0");
+  assert.equal(fmtClock(0.96, 1), "0:01.0");
   assert.equal(parseClock("1:23.5"), 83.5);
   assert.equal(parseClock("12,25"), 12.25);
   assert.ok(Number.isNaN(parseClock("abc")));

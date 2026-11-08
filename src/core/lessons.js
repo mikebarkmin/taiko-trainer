@@ -144,6 +144,23 @@ export function normalizeVideo(v) {
   return null;
 }
 
+/** The lesson's bar structure, if set: beat 1 of bar 1 at `start`, `bpm` tempo. */
+function normalizeGrid(g) {
+  if (!g || typeof g !== "object") return null;
+  const start = Number(g.start);
+  const bpm = Number(g.bpm);
+  if (!Number.isFinite(start) || start < 0 || start > MAX_TIME) return null;
+  if (!(bpm >= 20 && bpm <= 300)) return null;
+  return { start: Math.round(start * 1000) / 1000, bpm: Math.round(bpm) };
+}
+
+/** The nearest half-beat of the grid (or `t` unchanged without a grid). */
+export function snapToGrid(grid, t) {
+  if (!grid) return t;
+  const half = 30 / grid.bpm; // half a beat, in seconds
+  return Math.max(0, grid.start + Math.round((t - grid.start) / half) * half);
+}
+
 export function normalizeLesson(l) {
   if (!l || typeof l !== "object") return null;
   return {
@@ -151,6 +168,7 @@ export function normalizeLesson(l) {
     name: text(l.name, 80).trim() || t("data.untitledLesson"),
     notes: text(l.notes, 500).trim(),
     video: normalizeVideo(l.video),
+    grid: normalizeGrid(l.grid),
     strikes: normalizeStrikes(l.strikes),
   };
 }

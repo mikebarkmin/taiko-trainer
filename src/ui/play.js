@@ -20,7 +20,7 @@ export function mountPlay(app) {
     nowKana: $("#nowKana"), nowRo: $("#nowRo"), pulse: $$("#beatPulse i"),
     countIn: $("#optCountIn"), loop: $("#optLoop"), guide: $("#optGuide"), click: $("#optClick"), speak: $("#optSpeak"), sayWords: $("#optSayWords"),
   };
-  const drum = createDrum($("#playDrum"), { onTap: (hand, where) => app.freeHit(drum, hand, where) });
+  const drum = createDrum($("#playDrum"), { onTap: (hand, where) => tap(hand, where) });
   const lessonPlayer = createLessonPlayer(app, { drum, setNow: (k, r) => setNow(k, r) });
   const modeBeats = $("#modeBeats");
   const modeVideo = $("#modeVideo");
@@ -296,8 +296,24 @@ export function mountPlay(app) {
   refresh();
   syncButton();
 
+  /** A hit on the drum (key or tap): sound it, and judge it against a playing lesson video. */
+  function tap(hand, where) {
+    app.freeHit(drum, hand, where);
+    if (isLesson()) lessonPlayer.tap(hand, where);
+  }
+
+  /** A hit on a real drum, heard by the microphone (it makes its own sound). */
+  function drumHit(h) {
+    drum.hit({ hand: h.hand, where: h.where, vol: "big" });
+    const id = h.where === "rim" ? (h.hand === "R" ? "ka" : "ra") : (h.hand === "R" ? "don" : "kon");
+    drum.setWord(WORDS[id].kana);
+    if (isLesson()) lessonPlayer.tap(h.hand, h.known ? h.where : null, h.ago);
+  }
+
   return {
     drum,
+    tap,
+    drumHit,
     refresh,
     choose,
     toggle,

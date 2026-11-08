@@ -21,6 +21,14 @@ export const DEFAULT_SETTINGS = {
   videoRate: 1,
   videoSound: true,
   videoGuide: false,
+  videoMirror: false,
+  timelineTop: false,
+  tapDelay: 0, // ms taken off every tap in the strike editor (see "Tap timing")
+  showWave: true,
+  videoOverlay: true, // strikes slide over the video, rhythm-game style
+  micDelay: 0, // ms between a real drum hit and the app hearing it (see "Real drum")
+  micSens: 50, // 0…100
+  micRim: 0, // brightness above which a hit is a rim hit; 0: not taught
 };
 
 function read(key) {
@@ -56,8 +64,15 @@ export function loadSettings() {
     if (typeof raw.item === "string" && /^(pattern|song|lesson):[A-Za-z0-9_-]{1,64}$/.test(raw.item)) s.item = raw.item;
     const bpm = Math.round(Number(raw.bpm));
     if (bpm >= MIN_BPM && bpm <= MAX_BPM) s.bpm = bpm;
-    for (const k of ["countIn", "loop", "guide", "click", "speak", "sayWords", "videoSound", "videoGuide"]) if (typeof raw[k] === "boolean") s[k] = raw[k];
+    for (const k of ["countIn", "loop", "guide", "click", "speak", "sayWords", "videoSound", "videoGuide", "videoMirror", "timelineTop", "showWave", "videoOverlay"]) if (typeof raw[k] === "boolean") s[k] = raw[k];
     if ([0.25, 0.5, 0.75, 1, 1.25].includes(raw.videoRate)) s.videoRate = raw.videoRate;
+    const delay = Math.round(Number(raw.tapDelay));
+    if (delay >= 0 && delay <= 400) s.tapDelay = delay;
+    const micDelay = Math.round(Number(raw.micDelay));
+    if (micDelay >= 0 && micDelay <= 400) s.micDelay = micDelay;
+    const sens = Math.round(Number(raw.micSens));
+    if (sens >= 0 && sens <= 100) s.micSens = sens;
+    if (Number(raw.micRim) > 0 && Number(raw.micRim) < 10) s.micRim = Number(raw.micRim);
   }
   return s;
 }

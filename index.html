@@ -57,6 +57,7 @@
             </div>
             <div class="beat-pulse" id="beatPulse" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
             <p class="drum-caption" data-i18n-html="play.caption"></p>
+            <div class="mic-host" id="pvMic"></div>
           </div>
         </section>
 
@@ -113,6 +114,7 @@
 
             <div class="transport">
               <button type="button" class="btn primary big" id="pvPlay" data-i18n="btn.play"></button>
+              <button type="button" class="btn small ghost" id="pvStudio" aria-pressed="false" data-i18n="pv.studio"></button>
               <p class="status" id="pvStatus" aria-live="off"></p>
             </div>
 
@@ -126,6 +128,8 @@
               <label class="check" for="pvLoop"><input type="checkbox" id="pvLoop"> <span data-i18n="opt.loop"></span></label>
               <label class="check" for="pvSound"><input type="checkbox" id="pvSound"> <span data-i18n="pv.sound"></span></label>
               <label class="check" for="pvGuide"><input type="checkbox" id="pvGuide"> <span data-i18n="opt.guide"></span></label>
+              <label class="check" for="pvMirror"><input type="checkbox" id="pvMirror"> <span data-i18n="pv.mirror"></span></label>
+              <label class="check" for="pvOverlay"><input type="checkbox" id="pvOverlay"> <span data-i18n="pv.overlay"></span></label>
               <label class="check" for="pvSpeak"><input type="checkbox" id="pvSpeak"> <span data-i18n="opt.speak"></span></label>
             </div>
             <p class="hint voice-hint" id="pvVoiceHint" data-i18n="voice.missing" hidden></p>
@@ -144,7 +148,7 @@
 
             <div class="lane-box">
               <div id="pvLane"></div>
-              <p class="hint"><span data-i18n="pv.laneHint"></span> <a href="#library" id="pvEdit" data-i18n="btn.editStrikes"></a></p>
+              <p class="hint"><button type="button" class="btn small ghost lane-pos" id="pvLanePos" aria-pressed="false"></button> <span data-i18n="pv.laneHint"></span> <a href="#library" id="pvEdit" data-i18n="btn.editStrikes"></a></p>
             </div>
           </div>
         </section>
